@@ -1,0 +1,19 @@
+{
+  "name": "praetorean",
+  "version": "0.1.0",
+  "description": "Email verification discord bot.",
+  "main": "index.js",
+  "dependencies": {
+    "discord.js": "^12.2.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dem1se/protaerean.git"
+  },
+  "author": "dem1se",
+  "license": "MPL-2.0"
+}

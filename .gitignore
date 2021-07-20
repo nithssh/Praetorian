@@ -1,0 +1,9 @@
+# standard nodejs excludes
+node_modules/
+
+# vs code configs
+.vscode/*
+!settings.json
+
+# uncomment this to keep the token a secret
+token.js
