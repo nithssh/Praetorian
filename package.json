@@ -2,7 +2,7 @@
   "name": "praetorean",
   "version": "0.1.0",
   "description": "Email verification discord bot.",
-  "main": "index.js",
+  "main": "bot.js",
   "dependencies": {
     "discord.js": "^12.2.0",
     "nodemailer": "^6.6.3",

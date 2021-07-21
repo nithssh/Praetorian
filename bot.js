@@ -15,10 +15,16 @@ client.on("message", (msg) => {
   if (msg.author.bot) return;
 
   if (msg.content.toLowerCase().startsWith("!verify")) {
+    // TODO Filter domain
     if (!isValidVerifyCommand(msg)) {
       msg.reply("Invalid command. Must be !verify <*email*>, where *email* is a valid email address.");
       return;
     }
+    if (!isRightDomain(msg.content.split(" ")[1])) {
+      msg.reply("The email must be part of the `ssn.edu.in` domain. Please try again with the right email address [example@ssn.edu.in].")
+      return;
+    }
+
     startVerificationProcess(msg.content.split(" ")[1], msg.author.id, (status) => {
       if (status === "EmailAlreadyTaken") {
         msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
@@ -53,6 +59,19 @@ client.on("message", (msg) => {
   }
 });
 
+function isValidCodeCommand(message) {
+  if (message.content.split(" ").length !== 2) {
+    return false;
+  }
+  if (message.content.split(" ")[0].toLowerCase() != "!code") {
+    return false;
+  }
+  if (message.content.split(" ")[1] < 100000 || message.content.split(" ")[1] > 1000000) {
+    return false;
+  }
+  return true;
+}
+
 function isValidVerifyCommand(message) {
   if (message.content.split(" ").length !== 2) {
     return false;
@@ -71,17 +90,8 @@ function isValidEmail(email) {
   return format.test(email)
 }
 
-function isValidCodeCommand(message) {
-  if (message.content.split(" ").length !== 2) {
-    return false;
-  }
-  if (message.content.split(" ")[0].toLowerCase() != "!code") {
-    return false;
-  }
-  if (message.content.split(" ")[1] < 100000 || message.content.split(" ")[1] > 1000000) {
-    return false;
-  }
-  return true;
+function isRightDomain(email) {
+  return (email.split("@")[1].toLowerCase() === "ssn.edu.in")
 }
 
 client.login(token);
