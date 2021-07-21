@@ -1,9 +1,6 @@
 const Discord = require("discord.js");
 const { startVerificationProcess, validateCode } = require("./lib/backend");
-const {
-  isValidCodeCommand,
-  isValidVerifyCommand,
-  isRightDomain } = require("./lib/utilities");
+const { isValidCodeCommand, isValidVerifyCommand, isRightDomain } = require("./lib/utilities");
 const token = require("./token");
 
 const client = new Discord.Client();
@@ -13,14 +10,22 @@ client.on("ready", () => {
 });
 
 /*  Commands:
+ *      !help -- prints a help prompt
  *      !verify <email> -- starts verification for the specified email id
  *      !code <code> -- validates the provided code
  */
 client.on("message", (msg) => {
   if (msg.author.bot) return;
 
+  if (msg.content.toLowerCase().startsWith("!help")) {
+    let embedMessage = new Discord.MessageEmbed()
+      .setTitle("Praetorean")
+      .setColor('#0099ff')
+      .setAuthor('Help Message')
+    msg.channel.send(embedMessage);
+  }
+
   if (msg.content.toLowerCase().startsWith("!verify")) {
-    // TODO Filter domain
     if (!isValidVerifyCommand(msg)) {
       msg.reply("Invalid command. Must be !verify <*email*>, where *email* is a valid email address.");
       return;
@@ -50,8 +55,11 @@ client.on("message", (msg) => {
     }
     validateCode(msg.content.split(" ")[1], msg.author.id, (isSuccess) => {
       if (isSuccess === true) {
-        let roleID = msg.guild.roles.cache.find(r => r.name === "Verified");
-        msg.guild.member(msg.author.id).roles.add(roleID); // give role
+        msg.guild.roles.fetch()
+          .then((roles) => {
+            return roles.cache.find(r => r.name.toLowerCase() == "verified");
+          })
+          .then((role) => msg.guild.member(msg.author.id).roles.add(role));
         msg.reply("Successfully verified! Welcome to <Server X>");
       } else if (isSuccess === 'NoActiveSession') {
         msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
