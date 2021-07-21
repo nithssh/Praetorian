@@ -17,7 +17,6 @@ client.on("message", (msg) => {
   if (msg.content.toLowerCase().startsWith("!verify")) {
     // TODO validate user input first
     startVerificationProcess(msg.content.split(" ")[1], msg.author.id, (status) => {
-      msg.channel.reply("Started verification.");
       if (status === "EmailAlreadyTaken") {
         msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
       } else if (status === "SessionAlreadyActive") {
