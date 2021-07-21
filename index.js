@@ -24,14 +24,13 @@ client.on("message", (msg) => {
     validateCode(msg.content.split(" ")[1], msg.author.id, (isSuccess) => {
       if (isSuccess) {
         msg.reply("Successfully verified! Welcome to ...");
-        // TODO commit to verifiedTable
         // give discord role
-      } else if(isSuccess === undefined) {
-        msg.reply("No active verification request. Use the `!verify <email>` command to start one.")
+      } else if (isSuccess === undefined) {
+        msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
       } else {
         msg.reply("Entered code is invalid, please try again.");
       }
-    }); 
+    });
   }
 });
 
