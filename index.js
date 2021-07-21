@@ -15,18 +15,22 @@ client.on("message", (msg) => {
   if (msg.author.bot) return; // don't process bot messages
 
   if (msg.content.toLowerCase().startsWith("!verify")) {
-    startVerificationProcess(msg.content.split(" ")[1], msg.author.id); // TODO need to validate this user input first
+    // TODO validate user input first
+    startVerificationProcess(msg.content.split(" ")[1], msg.author.id); 
     msg.channel.send(`Started Verifying ${msg.author}`);
   }
 
   if (msg.content.toLowerCase().startsWith("!code")) {
     // TODO need input validation
     validateCode(msg.content.split(" ")[1], msg.author.id, (isSuccess) => {
-      if (isSuccess) {
-        msg.reply("Successfully verified! Welcome to ...");
-        // give discord role
-      } else if (isSuccess === undefined) {
+      if (isSuccess === true) {
+        let roleID = msg.guild.roles.cache.find(r => r.name === "Verified");
+        msg.guild.member(msg.author.id).roles.add(roleID); // give role
+        msg.reply("Successfully verified! Welcome to <Server X>");
+      } else if (isSuccess === 'NoActiveSession') {
         msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
+      }  else if (isSuccess === 'LastSessionExpired') {
+        msg.reply("Your last request has expired. Use the `!verify <email>` command again to try again.")
       } else {
         msg.reply("Entered code is invalid, please try again.");
       }
