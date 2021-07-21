@@ -4,6 +4,7 @@ node_modules/
 # vs code configs
 .vscode/*
 !settings.json
+!.prettierrc
 
 token.js
 secrets.js
