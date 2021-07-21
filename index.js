@@ -12,12 +12,23 @@ client.on("ready", () => {
  *      !code <code> -- validates the provided code
  */
 client.on("message", (msg) => {
-  if (msg.author.bot) return; // don't process bot messages
+  if (msg.author.bot) return;
 
   if (msg.content.toLowerCase().startsWith("!verify")) {
     // TODO validate user input first
-    startVerificationProcess(msg.content.split(" ")[1], msg.author.id); 
-    msg.channel.send(`Started Verifying ${msg.author}`);
+    startVerificationProcess(msg.content.split(" ")[1], msg.author.id, (status) => {
+      msg.channel.reply("Started verification.");
+      if (status === "EmailAlreadyTaken") {
+        msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
+      } else if (status === "SessionAlreadyActive") {
+        msg.reply(`Verification code already requested within the last 15 mins. 
+        Check your email for the code, or try again later.`);
+      } else if (status === "SuccessfullyCreated") {
+        msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
+      } else if (status === "SuccessfullyUpdated") {
+        msg.reply(`Verification re-requested successfully. Check your email for the code.`);
+      } 
+    }); 
   }
 
   if (msg.content.toLowerCase().startsWith("!code")) {
@@ -30,7 +41,7 @@ client.on("message", (msg) => {
       } else if (isSuccess === 'NoActiveSession') {
         msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
       }  else if (isSuccess === 'LastSessionExpired') {
-        msg.reply("Your last request has expired. Use the `!verify <email>` command again to try again.")
+        msg.reply("Your last request has expired. Use the `!verify <email>` command again to try again.");
       } else {
         msg.reply("Entered code is invalid, please try again.");
       }
