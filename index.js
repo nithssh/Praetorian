@@ -20,16 +20,18 @@ client.on("message", (msg) => {
   }
 
   if (msg.content.toLowerCase().startsWith("!code")) {
-    let isSuccess = validateCode(msg.content.split(" ")[1], msg.author.id); // TODO need input validation
-    if (isSuccess) {
-      msg.reply("Successfully verified! Welcome to ...");
-      // TODO commit to verifiedTable
-      // give discord role
-    } else if(isSuccess === undefined) {
-      msg.reply("No active verification request. Use the `!verify <email>` command to start one.")
-    } else {
-      msg.reply("Entered code is invalid, please try again.");
-    }
+    // TODO need input validation
+    validateCode(msg.content.split(" ")[1], msg.author.id, (isSuccess) => {
+      if (isSuccess) {
+        msg.reply("Successfully verified! Welcome to ...");
+        // TODO commit to verifiedTable
+        // give discord role
+      } else if(isSuccess === undefined) {
+        msg.reply("No active verification request. Use the `!verify <email>` command to start one.")
+      } else {
+        msg.reply("Entered code is invalid, please try again.");
+      }
+    }); 
   }
 });
 
