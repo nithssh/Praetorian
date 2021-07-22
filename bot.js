@@ -10,12 +10,18 @@ client.on("ready", () => {
 });
 
 /*  Commands:
- *      !help -- prints a help prompt
+ *      !help -- prints a help message
  *      !verify <email> -- starts verification for the specified email id
  *      !code <code> -- validates the provided code
  */
 client.on("message", (msg) => {
   if (msg.author.bot) return;
+  if (msg.channel.name.toLowerCase() != "verification") return; // TODO Implement a setup-channel command
+
+  // Can't call this without the roles being setup. Combine both into single command?
+  if (msg.content.toLowerCase().startsWith("!setup-channel")) {
+    throw Error("NotImplemented");
+  }
 
   if (msg.content.toLowerCase().startsWith("!help")) {
     let embedMessage = new Discord.MessageEmbed()
@@ -35,7 +41,7 @@ client.on("message", (msg) => {
       return;
     }
 
-    startVerificationProcess(msg.content.split(" ")[1], msg.author.id, (status) => {
+    startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg.guild.id.toString(), (status) => {
       if (status === "EmailAlreadyTaken") {
         msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
       } else if (status === "SessionAlreadyActive") {
@@ -44,6 +50,8 @@ client.on("message", (msg) => {
         msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
       } else if (status === "SuccessfullyUpdated") {
         msg.reply(`Verification re-requested successfully. Check your email for the code.`);
+      } else if (status === "ServerMemberAlreadyVerified") {
+        msg.reply(`you are already verified in this server.`)
       }
     });
   }
@@ -53,14 +61,14 @@ client.on("message", (msg) => {
       msg.reply("Invalid command. Must be !code <*code*>, where *code* is a 6-digit number.");
       return;
     }
-    validateCode(msg.content.split(" ")[1], msg.author.id, (isSuccess) => {
+    validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg.guild.id.toString(), (isSuccess) => {
       if (isSuccess === true) {
         msg.guild.roles.fetch()
           .then((roles) => {
             return roles.cache.find(r => r.name.toLowerCase() == "verified");
           })
           .then((role) => msg.guild.member(msg.author.id).roles.add(role));
-        msg.reply("Successfully verified! Welcome to <Server X>");
+        msg.reply(`Successfully verified! Welcome to ${msg.guild.name}!`);
       } else if (isSuccess === 'NoActiveSession') {
         msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
       } else if (isSuccess === 'LastSessionExpired') {
