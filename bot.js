@@ -24,10 +24,20 @@ client.on("message", (msg) => {
   }
 
   if (msg.content.toLowerCase().startsWith("!help")) {
+    img = 'https://thumbs-prod.si-cdn.com/xmx0u6dT5Mdqq_yuy1WrKVVE9AA=/800x600/filters:no_upscale()/https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363/barcode.jpg'
     let embedMessage = new Discord.MessageEmbed()
       .setTitle("Praetorean")
       .setColor('#0099ff')
-      .setAuthor('Help Message')
+      .setAuthor('Help Message',img)
+      .setDescription('!')
+      .addFields(
+        {name:'!verify', value:'starts verification for the specified email id'},
+        {name:'!code', value:'validates the provided code' },
+        {name:'!domain', value:'sets your domain name'}
+      )
+      .setThumbnail(img)
+      .setFooter('Version 0.8.0',img)
+      
     msg.channel.send(embedMessage);
   }
 
