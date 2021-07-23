@@ -1,12 +1,20 @@
 const Discord = require("discord.js");
-
-const { startVerificationProcess, validateCode, createServerPreferences } = require("./lib/backend");
-const { isValidCodeCommand, isValidVerifyCommand, isValidConfigureCommand, isSetChannelCommand } = require("./lib/utilities");
-const { ServerPreferencesCache } = require("./lib/caching");
-const serverPref = new ServerPreferencesCache();
 const token = require("./token");
+const { ServerPreferencesCache } = require("./lib/caching");
+const {
+  startVerificationProcess,
+  validateCode,
+  createServerPreferences
+} = require("./lib/backend");
+const {
+  isValidCodeCommand,
+  isValidVerifyCommand,
+  isValidConfigureCommand,
+  isSetChannelCommand
+} = require("./lib/utilities");
 
 const client = new Discord.Client();
+const serverPref = new ServerPreferencesCache();
 
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -30,23 +38,21 @@ client.on("message", (msg) => {
     const prefix = sp.prefix;
     serverPref.isCmdChannelSetup(msg.guild.id.toString(), (isChannelSetup) => {
       // make sure message is in the right channel
-      if (isChannelSetup && !isSetChannelCommand(msg)) {
+      if (isChannelSetup && !isSetChannelCommand(msg) &&
+        msg.content !== `${prefix}setup`
+      ) {
         if (msg.channel.id != sp.cmd_channel) return;
       } else {
         if (
           !msg.channel.name.toLowerCase().includes("verification") &&
-          !isSetChannelCommand(msg)
+          !isSetChannelCommand(msg) &&
+          msg.content !== `${prefix}setup`
         ) return;
       }
 
-      // Can't call this without the roles being setup. Combine both into single command?
-      if (msg.content.toLowerCase().startsWith(`${prefix}setup`)) {
-        throw Error("NotImplemented");
-      }
-
-      if (msg.content.toLowerCase().startsWith("!help")) {
+      if (msg.content.toLowerCase().startsWith(`${prefix}help`)) {
         img = `https://thumbs-prod.si-cdn.com/xmx0u6dT5Mdqq_yuy1WrKVVE9AA=/800x600/filters:no_upscale()/
-https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363/barcode.jpg`
+        https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363/barcode.jpg`
         let embedMessage = new Discord.MessageEmbed()
           .setTitle("Praetorean")
           .setColor('#0099ff')
@@ -62,6 +68,7 @@ https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363
 
         msg.channel.send(embedMessage);
       }
+
       if (msg.content.toLowerCase().startsWith(`${prefix}verify`)) {
         if (!isValidVerifyCommand(msg)) {
           msg.reply("Invalid command. Must be !verify <*email*>, where *email* is a valid email address.");
@@ -110,11 +117,107 @@ https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363
         });
       }
 
+      if (msg.content.toLowerCase().startsWith(`${prefix}setup`)) {
+        if (!msg.guild.member(msg.author).hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
+          msg.reply("Only members with `manage server` and `manager roles` permissions can use this command.");
+          return;
+        }
+        msg.guild.roles.fetch()
+          .then((roleManager) => {
+            // roleManager.resolve(roleManager.everyone.id).permissions.remove([
+            //   'VIEW_CHANNEL',
+            //   'CREATE_INSTANT_INVITE',
+            //   'CHANGE_NICKNAME',
+            //   'SEND_MESSAGES',
+            //   'EMBED_LINKS',
+            //   'ATTACH_FILES',
+            //   'USE_EXTERNAL_EMOJIS',
+            //   'READ_MESSAGE_HISTORY',
+            //   'CONNECT',
+            //   'SPEAK',
+            //   'STREAM',
+            //   'USE_VAD',
+            // ]);
+            roleManager.everyone.setPermissions([]).then(
+              msg.channel.send(`Modified \`everyone\` role's permissions`)
+            );
+            return roleManager;
+          })
+          .then((roleManager) => {
+            if (roleManager.cache.filter((value, key, collection) => value.name.toLowerCase() === "verified").size === 0) {
+              roleManager.create({
+                data: {
+                  name: "Verified",
+                  position: 1,
+                  permissions: new Discord.Permissions()
+                    .add('VIEW_CHANNEL')
+                    .add('CREATE_INSTANT_INVITE')
+                    .add('CHANGE_NICKNAME')
+                    .add('SEND_MESSAGES')
+                    .add('EMBED_LINKS')
+                    .add('ATTACH_FILES')
+                    .add('USE_EXTERNAL_EMOJIS')
+                    .add('READ_MESSAGE_HISTORY')
+                    .add('CONNECT')
+                    .add('SPEAK')
+                    .add('STREAM')
+                    .add('USE_VAD')
+                },
+                reason: "Created by Praetorian",
+              });
+              msg.channel.send(`Created \`Verified\` role`);
+            } else {
+              msg.channel.send(`\`Verified\` role already exists`);
+            }
+            return roleManager;
+          })
+          .then((roleManager) => {
+            if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
+              roleManager.fetch().then((roleManagerUpdated) => {
+                msg.guild.channels.create('Verification', {
+                  topic: "Verify using the `!verify` command to get access to the server",
+                  nsfw: false,
+                  position: 1,
+                  permissionOverwrites: [
+                    {
+                      id: roleManagerUpdated.everyone,
+                      allow: new Discord.Permissions()
+                        .add('VIEW_CHANNEL')
+                        .add('SEND_MESSAGES')
+                    },
+                    {
+                      id: roleManagerUpdated.cache.find(value => value.name.toLowerCase() == "verified"),
+                      deny: new Discord.Permissions()
+                        .add('VIEW_CHANNEL')
+                    }
+                  ],
+                  reason: `Channel created by Praetorean after setup command by ${msg.author}`
+                }).then((createdChannel) => {
+                  serverPref.setServerPreferences({
+                    "server_id": sp.server_id,
+                    "domain": sp.domain,
+                    "prefix": sp.prefix,
+                    "cmd_channel": createdChannel.id
+                  });
+                });
+                msg.channel.send(`Created and Updated \`#verification\` channel`);
+              });
+            } else {
+              msg.channel.send(`Channel named \`#verification\` already exisits`);
+            }
+          });
+      }
+
       if (msg.content.toLowerCase().startsWith(`${prefix}configure`)) {
         if (!isValidConfigureCommand(msg)) {
           msg.reply("Invalid command. Check help for usage.")
           return;
         }
+        if (!msg.guild.member(msg.author).hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
+          msg.reply("Only members with `manage server` and `manager roles` permissions can use this command.");
+          return;
+        }
+
         let cmdParts = msg.content.split(" ");
         if (cmdParts[1].toLowerCase() === "domain") {
           serverPref.setServerPreferences({
@@ -142,6 +245,7 @@ https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363
           msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
         }
       }
+
     });
   });
 });
