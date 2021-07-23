@@ -22,6 +22,8 @@ client.on("ready", () => {
 
 client.on('guildCreate', (guild) => {
   createServerPreferences(guild.id.toString());
+  guild.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command. 
+Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands.`)
   console.log(`Joined new server [${guild.id}: ${guild.name}]. Generated ServerPreferences successfully.`);
 });
 
@@ -29,6 +31,8 @@ client.on('guildCreate', (guild) => {
  *      !help -- prints a help message
  *      !verify <email> -- starts verification for the specified email id
  *      !code <code> -- validates the provided code
+ *      !setup
+ *      !configure <prefix/domain/setcmdchannel> <*newPrefix* / *newDomain* />
  */
 client.on("message", (msg) => {
   if (msg.author.bot) return;
@@ -51,21 +55,46 @@ client.on("message", (msg) => {
       }
 
       if (msg.content.toLowerCase().startsWith(`${prefix}help`)) {
-        img = `https://thumbs-prod.si-cdn.com/xmx0u6dT5Mdqq_yuy1WrKVVE9AA=/800x600/filters:no_upscale()/
-        https://public-media.si-cdn.com/filer/82/41/82412cad-4780-4072-8f62-7fb13becb363/barcode.jpg`
-        let embedMessage = new Discord.MessageEmbed()
-          .setTitle("Praetorean")
-          .setColor('#0099ff')
-          .setAuthor('Help Message', img)
-          .setDescription('!')
-          .addFields(
-            { name: '!verify', value: 'starts verification for the specified email id' },
-            { name: '!code', value: 'validates the provided code' },
-            { name: '!domain', value: 'sets your domain name' }
-          )
-          .setThumbnail(img)
-          .setFooter('Version 0.8.0', img)
-
+        let img = "https://images.unsplash.com/photo-1614680376739-414d95ff43df?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=967&q=80";
+        let embedMessage;
+        if (msg.guild.member(msg.author).hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
+          embedMessage = new Discord.MessageEmbed()
+            .setAuthor('Full Help Message', img)
+            .setColor('#cccccc')
+            .setTitle("Praetorean")
+            .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
+            .addFields(
+              {
+                name: "User Commands", value: `
+  \`${prefix}verify\` — Start user verification for the specified email id.\n
+  \`${prefix}code\` — Validate the entered verification code.\n
+  \`${prefix}help\` — Print this help message.\n
+              `},
+              {
+                name: "Admin Commands", value: `
+  \`${prefix}setup\` — Sets up this server for this bot to work. Creates a verified role, updates the everyone role, and creates a verification channel.\n
+  \`${prefix}configure domain <example.com>\` — Set the domain filter.\n
+  \`${prefix}configure prefix <!>\` — Set the bot's command prefix symbol.\n
+  \`${prefix}configure setCmdChannel\` — Manually set the verification channel. Automatically set by the \`setup\` command.\n
+              `}
+            )
+            .setFooter('Version 1.0.0-beta', img);
+        } else {
+          embedMessage = new Discord.MessageEmbed()
+            .setAuthor('Help Message', img)
+            .setColor('#cccccc')
+            .setTitle("Praetorean")
+            .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
+            .addFields(
+              {
+                name: "User Commands", value: `
+  \`${prefix}verify\` — Start user verification for the specified email id.\n
+  \`${prefix}code\` — Validate the entered verification code.\n
+  \`${prefix}help\` — Print this help message.\n
+              `},
+            )
+            .setFooter('Version 1.0.0-beta', img);
+        }
         msg.channel.send(embedMessage);
       }
 
@@ -124,20 +153,6 @@ client.on("message", (msg) => {
         }
         msg.guild.roles.fetch()
           .then((roleManager) => {
-            // roleManager.resolve(roleManager.everyone.id).permissions.remove([
-            //   'VIEW_CHANNEL',
-            //   'CREATE_INSTANT_INVITE',
-            //   'CHANGE_NICKNAME',
-            //   'SEND_MESSAGES',
-            //   'EMBED_LINKS',
-            //   'ATTACH_FILES',
-            //   'USE_EXTERNAL_EMOJIS',
-            //   'READ_MESSAGE_HISTORY',
-            //   'CONNECT',
-            //   'SPEAK',
-            //   'STREAM',
-            //   'USE_VAD',
-            // ]);
             roleManager.everyone.setPermissions([]).then(
               msg.channel.send(`Modified \`everyone\` role's permissions`)
             );
