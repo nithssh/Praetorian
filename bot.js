@@ -55,13 +55,13 @@ client.on("message", (msg) => {
       }
 
       if (msg.content.toLowerCase().startsWith(`${prefix}help`)) {
-        let img = "https://images.unsplash.com/photo-1614680376739-414d95ff43df?ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&ixlib=rb-1.2.1&auto=format&fit=crop&w=967&q=80";
+        let img = "https://raw.githubusercontent.com/Dem1se/Praetorian/master/docs/avatar.png?token=AFJ5V4KMOJUJOEIPOVP3FGDA7K2SS";
         let embedMessage;
         if (msg.guild.member(msg.author).hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
           embedMessage = new Discord.MessageEmbed()
             .setAuthor('Full Help Message', img)
             .setColor('#cccccc')
-            .setTitle("Praetorean")
+            .setTitle("Praetorian")
             .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
             .addFields(
               {
@@ -83,7 +83,7 @@ client.on("message", (msg) => {
           embedMessage = new Discord.MessageEmbed()
             .setAuthor('Help Message', img)
             .setColor('#cccccc')
-            .setTitle("Praetorean")
+            .setTitle("Praetorian")
             .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
             .addFields(
               {
@@ -206,7 +206,7 @@ client.on("message", (msg) => {
                         .add('VIEW_CHANNEL')
                     }
                   ],
-                  reason: `Channel created by Praetorean after setup command by ${msg.author}`
+                  reason: `Channel created by Praetorian after setup command by ${msg.author}`
                 }).then((createdChannel) => {
                   serverPref.setServerPreferences({
                     "server_id": sp.server_id,
