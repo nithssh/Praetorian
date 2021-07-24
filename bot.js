@@ -20,10 +20,22 @@ client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
+// https://stackoverflow.com/a/64632815/8189464
 client.on('guildMemberAdd', (guildMember) => {
-  serverPref.getServerPreferences(guildMember.id, (sp) => {
-
+  serverPref.getServerPreferences(guildMember.guild.id, (sp) => {
+    guildMember.guild.channels.resolve(sp.cmd_channel).send(`Hey! you will need to verify your email from belonging to one of ${sp.domain.replace(" ", ", ")} to gain access tp this sever.
+Use the command \`${sp.prefix}help\` to get more info.`);
+    //     guildMember.send(`Hey! you will need to verify your email from belonging to one of ${sp.domain.replace(" ", ", ")} to gain access tp this sever.
+    // Use the command \`${sp.prefix}help\` to get more info.`,
+    //       {
+    //         reply: guildMember,
+    //       }
+    //     );
   });
+})
+
+client.on('guildMemberRemove', (guildMember) => {
+  // remove from the verified DB for the server_id
 })
 
 client.on('guildCreate', (guild) => {
@@ -91,10 +103,10 @@ client.on("message", (msg) => {
             .addFields(
               {
                 name: "User Commands", value: `
-  \`${prefix}verify\` — Start user verification for the specified email id.\n
-  \`${prefix}code\` — Validate the entered verification code.\n
+  \`${prefix}verify user@example.com\` — Start user verification for the specified email id.\n
+  \`${prefix}code 123456\` — Validate the entered verification code.\n
   \`${prefix}help\` — Print this help message.\n
-              `},
+              `}
             )
             .setFooter('Version 1.0.0-beta', img);
         }
