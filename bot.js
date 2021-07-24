@@ -4,7 +4,8 @@ const { ServerPreferencesCache } = require("./lib/caching");
 const {
   startVerificationProcess,
   validateCode,
-  createServerPreferences
+  createServerPreferences,
+  deleteVerifiedUser
 } = require("./lib/backend");
 const {
   isValidCodeCommand,
@@ -20,22 +21,21 @@ client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
-// https://stackoverflow.com/a/64632815/8189464
+// Note: https://stackoverflow.com/a/64632815/8189464
 client.on('guildMemberAdd', (guildMember) => {
-  serverPref.getServerPreferences(guildMember.guild.id, (sp) => {
-    guildMember.guild.channels.resolve(sp.cmd_channel).send(`Hey! you will need to verify your email from belonging to one of ${sp.domain.replace(" ", ", ")} to gain access tp this sever.
+  // if the guildMemeberRemove deleteVerifiedUser() works properly all the time,
+  // we dont have to check to reassign roles to memebers,
+  // which would be critical since stored verified users can't start verification again.
+  setTimeout(() => {
+    serverPref.getServerPreferences(guildMember.guild.id, (sp) => {
+      guildMember.guild.channels.resolve(sp.cmd_channel).send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
 Use the command \`${sp.prefix}help\` to get more info.`);
-    //     guildMember.send(`Hey! you will need to verify your email from belonging to one of ${sp.domain.replace(" ", ", ")} to gain access tp this sever.
-    // Use the command \`${sp.prefix}help\` to get more info.`,
-    //       {
-    //         reply: guildMember,
-    //       }
-    //     );
-  });
+    });
+  }, 1000);
 })
 
 client.on('guildMemberRemove', (guildMember) => {
-  // remove from the verified DB for the server_id
+  deleteVerifiedUser(guildMember.id, guildMember.guild.id);
 })
 
 client.on('guildCreate', (guild) => {
