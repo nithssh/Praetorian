@@ -23,7 +23,8 @@ client.on("ready", () => {
 client.on('guildCreate', (guild) => {
   createServerPreferences(guild.id.toString());
   guild.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command. 
-Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands.`)
+Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands.
+Commands other than \`!setup\` and \`!configure setCmdChannel\` may not work until either \`setup\` or \`!configure setCmdChannel\` is called.`)
   console.log(`Joined new server [${guild.id}: ${guild.name}]. Generated ServerPreferences successfully.`);
 });
 
@@ -42,16 +43,10 @@ client.on("message", (msg) => {
     const prefix = sp.prefix;
     serverPref.isCmdChannelSetup(msg.guild.id.toString(), (isChannelSetup) => {
       // make sure message is in the right channel
-      if (isChannelSetup && !isSetChannelCommand(msg) &&
-        msg.content !== `${prefix}setup`
-      ) {
+      if (isChannelSetup && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) {
         if (msg.channel.id != sp.cmd_channel) return;
       } else {
-        if (
-          !msg.channel.name.toLowerCase().includes("verification") &&
-          !isSetChannelCommand(msg) &&
-          msg.content !== `${prefix}setup`
-        ) return;
+        if (!msg.channel.name.toLowerCase().includes("verification") && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) return;
       }
 
       if (msg.content.toLowerCase().startsWith(`${prefix}help`)) {
@@ -128,13 +123,25 @@ client.on("message", (msg) => {
           msg.reply("Invalid command. Must be !code <*code*>, where *code* is a 6-digit number.");
           return;
         }
+        if (!msg.guild.me.hasPermission(['MANAGE_ROLES'])) {
+          msg.reply(`the \`code\` command requires Praetorian bot to have \`Manage Messages\` permission.`);
+          return;
+        }
+
         validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg.guild.id.toString(), (isSuccess) => {
           if (isSuccess === true) {
-            msg.guild.roles.fetch()
-              .then((roles) => {
-                return roles.cache.find(r => r.name.toLowerCase() == "verified");
-              })
-              .then((role) => msg.guild.member(msg.author.id).roles.add(role));
+            if (msg.guild.member(msg.author.id).roles.highest.position > msg.guild.me.roles.highest.position) {
+              msg.reply(`has a higher role than Pratorian. Please fix this by moving the Pratorian role to higher position. 
+Bots can only manage the roles of members with roles all lower than their role in the hierarchy. 
+Discord permissions are weird, I know right. Please contact a admin/mod`);
+            } else {
+              msg.guild.member(msg.author.id).roles.add(sp.role_id);
+            }
+            // msg.guild.roles.fetch()
+            //   .then((roles) => {
+            //     return roles.cache.find(r => r.id == sp.role_id);
+            //   })
+            //   .then((role) => msg.guild.member(msg.author.id).roles.add(role));
             msg.reply(`Successfully verified! Welcome to ${msg.guild.name}!`);
           } else if (isSuccess === 'NoActiveSession') {
             msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
@@ -151,15 +158,23 @@ client.on("message", (msg) => {
           msg.reply("Only members with `manage server` and `manager roles` permissions can use this command.");
           return;
         }
+        if (!msg.guild.me.hasPermission('ADMINISTRATOR')) {
+          msg.reply(`the \`setup\` command requires Praetorian bot to have \`administrator\` permission.
+None of the other commands and regular operation require admin permissions. The permission can be removed after the setup command.`);
+          return;
+        }
+
         msg.guild.roles.fetch()
+          // clear the everyone role
           .then((roleManager) => {
             roleManager.everyone.setPermissions([]).then(
               msg.channel.send(`Modified \`everyone\` role's permissions`)
             );
             return roleManager;
           })
+          // create the verified role
           .then((roleManager) => {
-            if (roleManager.cache.filter((value, key, collection) => value.name.toLowerCase() === "verified").size === 0) {
+            if (!roleManager.cache.has(sp.role_id)) {
               roleManager.create({
                 data: {
                   name: "Verified",
@@ -179,47 +194,70 @@ client.on("message", (msg) => {
                     .add('USE_VAD')
                 },
                 reason: "Created by Praetorian",
+              }).then((role) => {
+                serverPref.setServerPreferences({
+                  "server_id": sp.server_id,
+                  "domain": sp.domain,
+                  "prefix": sp.prefix,
+                  "cmd_channel": sp.channel,
+                  "role_id": role.id.toString(),
+                });
+                msg.channel.send(`Created \`Verified\` role`)
+                // return Promise.resolve(roleManager);
+
+                
+
+
+              }).catch((reason) => {
+                console.error(`${reason}. Couldn't create the Verified role`)
+                return Promise.reject(roleManager);
               });
-              msg.channel.send(`Created \`Verified\` role`);
             } else {
               msg.channel.send(`\`Verified\` role already exists`);
+              // return roleManager;
+
+
+
             }
-            return roleManager;
           })
+          // create the channel
           .then((roleManager) => {
-            if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
-              roleManager.fetch().then((roleManagerUpdated) => {
-                msg.guild.channels.create('Verification', {
-                  topic: "Verify using the `!verify` command to get access to the server",
-                  nsfw: false,
-                  position: 1,
-                  permissionOverwrites: [
-                    {
-                      id: roleManagerUpdated.everyone,
-                      allow: new Discord.Permissions()
-                        .add('VIEW_CHANNEL')
-                        .add('SEND_MESSAGES')
-                    },
-                    {
-                      id: roleManagerUpdated.cache.find(value => value.name.toLowerCase() == "verified"),
-                      deny: new Discord.Permissions()
-                        .add('VIEW_CHANNEL')
-                    }
-                  ],
-                  reason: `Channel created by Praetorian after setup command by ${msg.author}`
-                }).then((createdChannel) => {
-                  serverPref.setServerPreferences({
-                    "server_id": sp.server_id,
-                    "domain": sp.domain,
-                    "prefix": sp.prefix,
-                    "cmd_channel": createdChannel.id
+            serverPref.getServerPreferences(msg.guild.id, (spUpdated) => {
+              if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
+                roleManager.fetch().then((roleManagerUpdated) => {
+                  msg.guild.channels.create('Verification', {
+                    topic: "Verify using the `!verify` command to get access to the server",
+                    nsfw: false,
+                    position: 1,
+                    permissionOverwrites: [
+                      {
+                        id: roleManagerUpdated.everyone,
+                        allow: new Discord.Permissions()
+                          .add('VIEW_CHANNEL')
+                          .add('SEND_MESSAGES')
+                      },
+                      {
+                        id: roleManagerUpdated.cache.find(value => value.id == spUpdated.role_id),
+                        deny: new Discord.Permissions()
+                          .add('VIEW_CHANNEL')
+                      }
+                    ],
+                    reason: `Channel created by Praetorian after setup command by ${msg.author}`
+                  }).then((createdChannel) => {
+                    serverPref.setServerPreferences({
+                      "server_id": spUpdated.server_id,
+                      "domain": spUpdated.domain,
+                      "prefix": spUpdated.prefix,
+                      "cmd_channel": createdChannel.id,
+                      "role_id": spUpdated.role_id
+                    });
                   });
+                  msg.channel.send(`Created and Updated \`#verification\` channel`);
                 });
-                msg.channel.send(`Created and Updated \`#verification\` channel`);
-              });
-            } else {
-              msg.channel.send(`Channel named \`#verification\` already exisits`);
-            }
+              } else {
+                msg.channel.send(`Channel named \`#verification\` already exisits`);
+              }
+            })
           });
       }
 
@@ -239,7 +277,8 @@ client.on("message", (msg) => {
             "server_id": sp.server_id,
             "domain": cmdParts[2],
             "prefix": sp.prefix,
-            "cmd_channel": sp.cmd_channel
+            "cmd_channel": sp.cmd_channel,
+            "role_id": sp.role_id
           });
           msg.reply(`Successfully updated domain filter to \`${cmdParts[2]}\``);
         } else if (cmdParts[1].toLowerCase() === "prefix") {
@@ -247,7 +286,8 @@ client.on("message", (msg) => {
             "server_id": sp.server_id,
             "domain": sp.domain,
             "prefix": cmdParts[2],
-            "cmd_channel": sp.cmd_channel
+            "cmd_channel": sp.cmd_channel,
+            "role_id": sp.role_id
           });
           msg.reply(`Successfully updated command prefix to \`${cmdParts[2]}\``);
         } else if (cmdParts[1].toLowerCase() === "setcmdchannel") {
@@ -255,7 +295,8 @@ client.on("message", (msg) => {
             "server_id": sp.server_id,
             "domain": sp.domain,
             "prefix": sp.prefix,
-            "cmd_channel": msg.channel.id.toString()
+            "cmd_channel": msg.channel.id.toString(),
+            "role_id": sp.role_id
           });
           msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
         }
