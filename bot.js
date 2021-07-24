@@ -89,7 +89,7 @@ client.on("message", (msg) => {
   \`${prefix}configure domain get\` — List the domains in the domain filter.\n
   \`${prefix}configure domain add example.com\` — Add the specified domain to the domain filter.\n
   \`${prefix}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
-  \`${prefix}configure prefix <!>\` — Set the bot's command prefix symbol.\n
+  \`${prefix}configure prefix !\` — Set the bot's command prefix symbol.\n
   \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
               `}
             )
@@ -360,19 +360,21 @@ None of the other commands and regular operation require admin permissions. The 
           msg.reply(`Successfully updated command prefix to \`${cmdParts[2]}\``);
         } else if (cmdParts[1].toLowerCase() === "setcmdchannel") {
           // reset the permissionOverwrites for the previous 
-          msg.guild.channels.resolve(sp.cmd_channel).updateOverwrite(
-            msg.guild.roles.everyone,
-            {
-              'VIEW_CHANNEL': null,
-              'SEND_MESSAGES': null
-            }
-          );
-          msg.guild.channels.resolve(sp.cmd_channel).updateOverwrite(
-            msg.guild.roles.resolve(sp.role_id),
-            {
-              'VIEW_CHANNEL': null
-            }
-          );
+          if (sp.cmd_channel != null) {
+            msg.guild.channels.resolve(sp.cmd_channel).updateOverwrite(
+              msg.guild.roles.everyone,
+              {
+                'VIEW_CHANNEL': null,
+                'SEND_MESSAGES': null
+              }
+            );
+            msg.guild.channels.resolve(sp.cmd_channel).updateOverwrite(
+              msg.guild.roles.resolve(sp.role_id),
+              {
+                'VIEW_CHANNEL': null
+              }
+            );
+          }
           serverPref.setServerPreferences({
             "server_id": sp.server_id,
             "domain": sp.domain,
