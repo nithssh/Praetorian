@@ -203,62 +203,90 @@ None of the other commands and regular operation require admin permissions. The 
                   "role_id": role.id.toString(),
                 });
                 msg.channel.send(`Created \`Verified\` role`)
-                // return Promise.resolve(roleManager);
-
-                
-
-
+                serverPref.getServerPreferences(msg.guild.id, (spUpdated) => {
+                  if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
+                    roleManager.fetch().then((roleManagerUpdated) => {
+                      msg.guild.channels.create('Verification', {
+                        topic: "Verify using the `!verify` command to get access to the server",
+                        nsfw: false,
+                        position: 1,
+                        permissionOverwrites: [
+                          {
+                            id: roleManagerUpdated.everyone,
+                            allow: new Discord.Permissions()
+                              .add('VIEW_CHANNEL')
+                              .add('SEND_MESSAGES')
+                          },
+                          {
+                            id: roleManagerUpdated.cache.find(value => value.id == spUpdated.role_id),
+                            deny: new Discord.Permissions()
+                              .add('VIEW_CHANNEL')
+                          }
+                        ],
+                        reason: `Channel created by Praetorian after setup command by ${msg.author}`
+                      }).then((createdChannel) => {
+                        serverPref.setServerPreferences({
+                          "server_id": spUpdated.server_id,
+                          "domain": spUpdated.domain,
+                          "prefix": spUpdated.prefix,
+                          "cmd_channel": createdChannel.id,
+                          "role_id": spUpdated.role_id
+                        });
+                      });
+                      msg.channel.send(`Created and Updated \`#verification\` channel`);
+                    });
+                  } else {
+                    msg.channel.send(`Channel named \`#verification\` already exisits`);
+                  }
+                })
               }).catch((reason) => {
                 console.error(`${reason}. Couldn't create the Verified role`)
                 return Promise.reject(roleManager);
               });
             } else {
               msg.channel.send(`\`Verified\` role already exists`);
-              // return roleManager;
-
-
-
-            }
-          })
-          // create the channel
-          .then((roleManager) => {
-            serverPref.getServerPreferences(msg.guild.id, (spUpdated) => {
-              if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
-                roleManager.fetch().then((roleManagerUpdated) => {
-                  msg.guild.channels.create('Verification', {
-                    topic: "Verify using the `!verify` command to get access to the server",
-                    nsfw: false,
-                    position: 1,
-                    permissionOverwrites: [
-                      {
-                        id: roleManagerUpdated.everyone,
-                        allow: new Discord.Permissions()
-                          .add('VIEW_CHANNEL')
-                          .add('SEND_MESSAGES')
-                      },
-                      {
-                        id: roleManagerUpdated.cache.find(value => value.id == spUpdated.role_id),
-                        deny: new Discord.Permissions()
-                          .add('VIEW_CHANNEL')
-                      }
-                    ],
-                    reason: `Channel created by Praetorian after setup command by ${msg.author}`
-                  }).then((createdChannel) => {
-                    serverPref.setServerPreferences({
-                      "server_id": spUpdated.server_id,
-                      "domain": spUpdated.domain,
-                      "prefix": spUpdated.prefix,
-                      "cmd_channel": createdChannel.id,
-                      "role_id": spUpdated.role_id
+              serverPref.getServerPreferences(msg.guild.id, (spUpdated) => {
+                if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
+                  roleManager.fetch().then((roleManagerUpdated) => {
+                    msg.guild.channels.create('Verification', {
+                      topic: "Verify using the `!verify` command to get access to the server",
+                      nsfw: false,
+                      position: 1,
+                      permissionOverwrites: [
+                        {
+                          id: roleManagerUpdated.everyone,
+                          allow: new Discord.Permissions()
+                            .add('VIEW_CHANNEL')
+                            .add('SEND_MESSAGES')
+                        },
+                        {
+                          id: roleManagerUpdated.cache.find(value => value.id == spUpdated.role_id),
+                          deny: new Discord.Permissions()
+                            .add('VIEW_CHANNEL')
+                        }
+                      ],
+                      reason: `Channel created by Praetorian after setup command by ${msg.author}`
+                    }).then((createdChannel) => {
+                      serverPref.setServerPreferences({
+                        "server_id": spUpdated.server_id,
+                        "domain": spUpdated.domain,
+                        "prefix": spUpdated.prefix,
+                        "cmd_channel": createdChannel.id,
+                        "role_id": spUpdated.role_id
+                      });
                     });
+                    msg.channel.send(`Created and Updated \`#verification\` channel`);
                   });
-                  msg.channel.send(`Created and Updated \`#verification\` channel`);
-                });
-              } else {
-                msg.channel.send(`Channel named \`#verification\` already exisits`);
-              }
-            })
+                } else {
+                  msg.channel.send(`Channel named \`#verification\` already exisits`);
+                }
+              });
+            }
           });
+        // create the channel
+        // .then((roleManager) => {
+
+        // });
       }
 
       if (msg.content.toLowerCase().startsWith(`${prefix}configure`)) {
