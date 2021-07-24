@@ -91,6 +91,8 @@ client.on("message", (msg) => {
   \`${prefix}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
   \`${prefix}configure prefix !\` — Set the bot's command prefix symbol.\n
   \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
+  \`${prefix}configure autoverifyall !\` — Add the verified role to all the current server member. This option is for pre-existing communities, 
+that want to switch over to this bot for auto verification.\n
               `}
             )
             .setFooter('Version 1.0.0-beta', img);
@@ -227,7 +229,7 @@ None of the other commands and regular operation require admin permissions. The 
                   if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
                     roleManager.fetch().then((roleManagerUpdated) => {
                       msg.guild.channels.create('Verification', {
-                        topic: "Verify using the `!verify` command to get access to the server",
+                        topic: "",
                         nsfw: false,
                         position: 1,
                         permissionOverwrites: [
@@ -383,6 +385,33 @@ None of the other commands and regular operation require admin permissions. The 
             "role_id": sp.role_id
           });
           msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
+        } else if (cmdParts[1].toLowerCase() === "autoverifyall") {
+          // message author needs to have admin
+          // bot needs to have admin
+          // bot needs to have highest -2 role position at least
+          if (!msg.guild.member(msg.author).hasPermission(['ADMINISTRATOR'])) {
+            msg.reply("Only members with admin can call this command.");
+            return;
+          }
+          if (!msg.guild.me.hasPermission('ADMINISTRATOR')) {
+            msg.reply(`Due to the way managing roles works on Discord, the bot needs to have Admin permission, 
+and also has to be at the top of the permissions list so that this command can work. Only this command requires this much privilige.`)
+            return;
+          }
+          if (msg.guild.roles.highest.position - msg.guild.me.roles.highest.position > 2) {
+            msg.reply(`The bot can only manage the roles of members with roles lower than its role in the list. 
+So please move the Praetorian role to the top or give Praetorian bot the highest role.`);
+            return;
+          }
+          msg.guild.members.fetch().then(
+            (guildMembers) => {
+              guildMembers.forEach((value, key, collection) => {
+                value.roles.add(sp.role_id);
+              });
+            }
+          ).then(
+            msg.reply("Successfully completed `autoverifyall` command. If anyone was left from being verified, it is due to their higher role compared to the bot.")
+          )
         }
       }
     });
