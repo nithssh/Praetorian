@@ -67,8 +67,10 @@ client.on("message", (msg) => {
               `},
               {
                 name: "Admin Commands", value: `
-  \`${prefix}setup\` — Sets up this server for this bot to work. Creates a verified role, updates the everyone role, and creates a verification channel.\n
-  \`${prefix}configure domain <example.com>\` — Set the domain filter.\n
+  \`${prefix}setup\` — Set up this server for the bot to work. Creates a verified role, removes all permissions from the everyone role, and creates a verification channel.\n
+  \`${prefix}configure domain add <example.com>\` — Add the specified domain to the domain filter.\n
+  \`${prefix}configure domain remove <example.com>\` — Remove the specified domain from the domain filter.\n
+  \`${prefix}configure domain get\` — List the domains in the domain filter.\n
   \`${prefix}configure prefix <!>\` — Set the bot's command prefix symbol.\n
   \`${prefix}configure setCmdChannel\` — Manually set the verification channel. Automatically set by the \`setup\` command.\n
               `}
@@ -98,8 +100,8 @@ client.on("message", (msg) => {
           msg.reply("Invalid command. Must be !verify <*email*>, where *email* is a valid email address.");
           return;
         }
-        if (msg.content.split(" ")[1].split("@")[1].toLowerCase() !== sp.domain) {
-          msg.reply(`The email must be part of the \`${sp.domain}\` domain. Please try again with the right email address [example@${sp.domain}].`);
+        if (!sp.domain.includes(msg.content.split(" ")[1].split("@")[1].toLowerCase())) {
+          msg.reply(`The email must be part of the \`${sp.domain.replace(" ", ", ")}\` domains. Please try again with the right email address [example@${sp.domain.split(" ")[0]}].`);
           return;
         }
 
@@ -172,7 +174,7 @@ None of the other commands and regular operation require admin permissions. The 
             );
             return roleManager;
           })
-          // create the verified role
+          // create the verified role and the channel
           .then((roleManager) => {
             if (!roleManager.cache.has(sp.role_id)) {
               roleManager.create({
@@ -283,10 +285,6 @@ None of the other commands and regular operation require admin permissions. The 
               });
             }
           });
-        // create the channel
-        // .then((roleManager) => {
-
-        // });
       }
 
       if (msg.content.toLowerCase().startsWith(`${prefix}configure`)) {
@@ -301,14 +299,38 @@ None of the other commands and regular operation require admin permissions. The 
 
         let cmdParts = msg.content.split(" ");
         if (cmdParts[1].toLowerCase() === "domain") {
-          serverPref.setServerPreferences({
-            "server_id": sp.server_id,
-            "domain": cmdParts[2],
-            "prefix": sp.prefix,
-            "cmd_channel": sp.cmd_channel,
-            "role_id": sp.role_id
-          });
-          msg.reply(`Successfully updated domain filter to \`${cmdParts[2]}\``);
+          if (cmdParts[2].toLowerCase() == "add") {
+            if (sp.domain.includes(cmdParts[3])) {
+              msg.reply("provided domain is already part of the filter.")
+            } else {
+              serverPref.setServerPreferences({
+                "server_id": sp.server_id,
+                "domain": `${sp.domain} ${cmdParts[3]}`,
+                "prefix": sp.prefix,
+                "cmd_channel": sp.cmd_channel,
+                "role_id": sp.role_id
+              });
+              msg.reply(`Successfully added \`${cmdParts[3]}\` to the domain filter.`);
+            }
+          } else if (cmdParts[2].toLowerCase() == "remove") {
+            if (sp.domain.includes(cmdParts[3])) {
+              if (sp.domain.split(" ").length === 1) {
+                msg.reply("can't remove the last domain in the filter");
+              }
+              else {
+                serverPref.setServerPreferences({
+                  "server_id": sp.server_id,
+                  "domain": sp.domain.replace(cmdParts[3], ""),
+                  "prefix": sp.prefix,
+                  "cmd_channel": sp.cmd_channel,
+                  "role_id": sp.role_id
+                });
+                msg.reply(`Successfully removed \`${cmdParts[3]}\` from the domain filter.`);
+              }
+            }
+          } else if (cmdParts[2].toLowerCase() == "get") {
+            msg.reply(`The domains currently in the domain filter are: ${sp.domain.replace(" ", ", ")}`)
+          }
         } else if (cmdParts[1].toLowerCase() === "prefix") {
           serverPref.setServerPreferences({
             "server_id": sp.server_id,
