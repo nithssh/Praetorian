@@ -20,11 +20,17 @@ client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
 });
 
+client.on('guildMemberAdd', (guildMember) => {
+  serverPref.getServerPreferences(guildMember.id, (sp) => {
+
+  });
+})
+
 client.on('guildCreate', (guild) => {
   createServerPreferences(guild.id.toString());
-  guild.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command. 
-Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands.
-Commands other than \`!setup\` and \`!configure setCmdChannel\` may not work until either \`setup\` or \`!configure setCmdChannel\` is called.`)
+  guild.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command.
+Praetorian only responds to commands in a specific command channel to reduce server spam. This channel will be created automatically by the setup command.
+Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands once \`!setup\` is run.`)
   console.log(`Joined new server [${guild.id}: ${guild.name}]. Generated ServerPreferences successfully.`);
 });
 
@@ -61,18 +67,18 @@ client.on("message", (msg) => {
             .addFields(
               {
                 name: "User Commands", value: `
-  \`${prefix}verify\` — Start user verification for the specified email id.\n
-  \`${prefix}code\` — Validate the entered verification code.\n
+  \`${prefix}verify user@example.com\` — Start user verification for the specified email id.\n
+  \`${prefix}code 123456\` — Validate the entered verification code.\n
   \`${prefix}help\` — Print this help message.\n
               `},
               {
                 name: "Admin Commands", value: `
   \`${prefix}setup\` — Set up this server for the bot to work. Creates a verified role, removes all permissions from the everyone role, and creates a verification channel.\n
-  \`${prefix}configure domain add <example.com>\` — Add the specified domain to the domain filter.\n
-  \`${prefix}configure domain remove <example.com>\` — Remove the specified domain from the domain filter.\n
   \`${prefix}configure domain get\` — List the domains in the domain filter.\n
+  \`${prefix}configure domain add example.com\` — Add the specified domain to the domain filter.\n
+  \`${prefix}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
   \`${prefix}configure prefix <!>\` — Set the bot's command prefix symbol.\n
-  \`${prefix}configure setCmdChannel\` — Manually set the verification channel. Automatically set by the \`setup\` command.\n
+  \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
               `}
             )
             .setFooter('Version 1.0.0-beta', img);
@@ -341,6 +347,20 @@ None of the other commands and regular operation require admin permissions. The 
           });
           msg.reply(`Successfully updated command prefix to \`${cmdParts[2]}\``);
         } else if (cmdParts[1].toLowerCase() === "setcmdchannel") {
+          // reset the permissionOverwrites for the previous 
+          msg.guild.channels.resolve(sp.cmd_channel).updateOverwrite(
+            msg.guild.roles.everyone,
+            {
+              'VIEW_CHANNEL': null,
+              'SEND_MESSAGES': null
+            }
+          );
+          msg.guild.channels.resolve(sp.cmd_channel).updateOverwrite(
+            msg.guild.roles.resolve(sp.role_id),
+            {
+              'VIEW_CHANNEL': null
+            }
+          );
           serverPref.setServerPreferences({
             "server_id": sp.server_id,
             "domain": sp.domain,
@@ -351,7 +371,6 @@ None of the other commands and regular operation require admin permissions. The 
           msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
         }
       }
-
     });
   });
 });
