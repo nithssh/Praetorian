@@ -3,6 +3,7 @@ A bot for email-verifying new server members, before giving them access to the s
 
 ## Invite
 Invite link *with* admin permission [here](https://discord.com/api/oauth2/authorize?client_id=835201049701646336&permissions=8&scope=bot), is recommended for the best experience.
+
 Admin permissions can be removed after the setup command is called as only that requires it.
 
 ## Commands
