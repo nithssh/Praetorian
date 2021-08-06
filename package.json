@@ -20,5 +20,8 @@
     "url": "git+https://github.com/dem1se/protaerean.git"
   },
   "author": "dem1se",
-  "license": "MPL-2.0"
+  "license": "MPL-2.0",
+  "devDependencies": {
+    "typescript": "^4.3.5"
+  }
 }
