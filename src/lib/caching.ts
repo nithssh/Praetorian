@@ -20,7 +20,7 @@ import { ServerPreferences } from "./datamodels";
  }
  */
 
-export default class ServerPreferencesCache {
+export class ServerPreferencesCache {
   cache: { [index: string]: ServerPreferences };
 
   constructor() {

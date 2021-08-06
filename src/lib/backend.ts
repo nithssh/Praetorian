@@ -1,6 +1,6 @@
 import { sendMail } from "./email";
 import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
-import DB from "./db";
+import { DB } from "./db";
 
 const db = new DB();
 
