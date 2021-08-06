@@ -5,7 +5,9 @@ node_modules/
 .vscode/*
 !settings.json
 
+# typescript output
+dist/*
+
 token.js
 secrets.js
 *.db
-old/
