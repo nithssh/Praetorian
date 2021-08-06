@@ -6,6 +6,8 @@ export class DB {
 
   constructor() {
     this.db = new Database("./database.db", (err) => {
+
+
       if (err) {
         console.error(err.message);
       } else {
@@ -39,6 +41,20 @@ export class DB {
     });
   }
 
+  // Hack to look like node-postgres
+  // (and handle async / await operation)
+  async get(sql: string, params: Array<string>): Promise<any> {
+    var that = this.db;
+    return new Promise(function (resolve, reject) {
+      that.all(sql, params, function (error, rows) {
+        if (error)
+          reject(error);
+        else
+          resolve(rows[0]);
+      });
+    });
+  };
+
   /*
    * Endpoints:
    *    - Email is already verified
@@ -46,7 +62,7 @@ export class DB {
    *    - Already active and unexpired session
    *    - Previously expired session -> Modifies DB
    */
-  storeSessionInfo(SessionInfo: SessionInfo, callback: (returnCode: string) => void) {
+  storeSessionInfo(SessionInfo: SessionInfo, callback: (returnCode: StartVerificationReturn | string) => void) {
     // Check if user is already verified in the server
     this.db.get(`SELECT * FROM VerifiedTable WHERE discord_id=? AND server_id=?`,
       [
@@ -100,14 +116,11 @@ export class DB {
                         callback("SuccessfullyUpdated")
                       }
                     }
-                  }
-                );
+                  });
               }
-            }
-          )
+            })
         }
-      }
-    );
+      });
   }
 
   /* Stores the Verified user profile and clears the corresponding SessionInfo*/
@@ -148,18 +161,14 @@ export class DB {
     );
   }
 
-  getVerifiedUser(discord_id: string, server_id: string, callback: (row: any) => void) {
-    this.db.get(`
-    SELECT * FROM VerifiedTable
+  async getVerifiedUser(discord_id: string, server_id: string): Promise<any> {
+    let verifiedUser = await this.get(`SELECT * FROM VerifiedTable
     WHERE discord_id=? AND server_id=?`,
       [
         discord_id,
         server_id
-      ],
-      (err, row) => {
-        callback(row);
-      }
-    );
+      ]);
+    return verifiedUser;
   }
 
   setSeverPreferences(ServerPreferences: ServerPreferences) {
@@ -175,7 +184,7 @@ export class DB {
       ]);
   }
 
-  getSessionInfo(discord_id: string, server_id: string, callback: Function) {
+  getSessionInfo(discord_id: string, server_id: string, callback: (row: any) => void) {
     this.db.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
       [
         discord_id,
@@ -205,34 +214,30 @@ export class DB {
       });
   }
 
-  getServerPreferences(server_id: string, callback: (row: any) => void) {
-    this.db.get(`SELECT * FROM ServerPreferencesTable WHERE server_id=?`, server_id, (err, row) => {
-      callback(row);
-    });
+  async getServerPreferences(server_id: string): Promise<any> {
+    let result = await this.get(`SELECT * FROM ServerPreferencesTable WHERE server_id=?`, [server_id]);
+    return result;
   }
 
-  createServerPreferences(server_id: string, callbackOptional?: () => void) {
-    this.getServerPreferences(server_id, (serverPreferences) => {
-      if (serverPreferences == undefined) {
-        this.db.run(`INSERT INTO ServerPreferencesTable
-        (server_id, prefix, domain)
-        VALUES (?, ?, ?)`,
-          [
-            server_id,
-            "!",
-            "gmail.com"
-          ],
-          () => {
-            if (callbackOptional != undefined) {
-              callbackOptional();
-            }
-          }
-        );
-      }
-    });
+  async createServerPreferences(server_id: string) {
+    let serverPreferences = await this.getServerPreferences(server_id)
+    if (serverPreferences == undefined) {
+      await this.get(`INSERT INTO ServerPreferencesTable (server_id, prefix, domain) VALUES (?, ?, ?)`,
+        [
+          server_id,
+          "!",
+          "gmail.com"
+        ]);
+      Promise.resolve();
+    }
   }
+}
 
-  exit() {
-    this.db.close();
-  }
+
+export enum StartVerificationReturn {
+  SuccessfullyCreated,
+  SuccessfullyUpdated,
+  SessionAlreadyActive,
+  EmailAlreadyTaken,
+  ServerMemberAlreadyVerified,
 }

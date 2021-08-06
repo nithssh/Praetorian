@@ -59,34 +59,33 @@ function storeVerifiedEmail(discord_id: string, server_id: string) {
   });
 }
 
-export function queryServerPreferences(server_id: string, callback: (row: any) => void) {
-  db.getServerPreferences(server_id, (row) => {
-    callback(row);
-  });
+export async function queryServerPreferences(server_id: string) {
+  let serverPrefs = await db.getServerPreferences(server_id);
+  return serverPrefs;
 }
 
 export function setServerPreferences(ServerPreferences: ServerPreferences) {
   db.setSeverPreferences(ServerPreferences);
 }
 
-export function createServerPreferences(server_id: string, callbackOptional?: () => void) {
-  db.createServerPreferences(server_id, callbackOptional);
+export async function createServerPreferences(server_id: string) {
+  await db.createServerPreferences(server_id);
 }
 
-export function deleteVerifiedUser(discord_id: string, server_id: string) {
-  db.getVerifiedUser(discord_id, server_id, (row) => {
-    if (row !== undefined) {
-      db.deleteVerifiedUser(new VerifiedEmail(
-        row.email,
-        row.discord_id,
-        row.server_id,
-        row.timestamp
-      ));
-    } else {
-      // console.log("User that left wasnt verified");
-    }
-  })
+export async function deleteVerifiedUser(discord_id: string, server_id: string) {
+  let row = await db.getVerifiedUser(discord_id, server_id);
+  if (row !== undefined) {
+    db.deleteVerifiedUser(new VerifiedEmail(
+      row.email,
+      row.discord_id,
+      row.server_id,
+      row.timestamp
+    ));
+  } else {
+    // console.log("User that left wasnt verified");
+  }
 }
+
 
 function generateCode(): number {
   return randomIntFromInterval(100000, 999999);
