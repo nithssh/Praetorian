@@ -1,10 +1,11 @@
-import sqlite from "sqlite3";
+import { Database } from "sqlite3";
 import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
-class DB {
-  db: sqlite.Database;
+
+export default class DB {
+  db: Database;
 
   constructor() {
-    this.db = new sqlite.Database("./database.db", (err) => {
+    this.db = new Database("./database.db", (err) => {
       if (err) {
         console.error(err.message);
       } else {
@@ -235,5 +236,3 @@ class DB {
     this.db.close();
   }
 }
-
-module.exports = { DB };
