@@ -1,6 +1,6 @@
 import { createTransport } from 'nodemailer';
 
-function sendMail(toMail : string, code: number) {
+export function sendMail(toMail : string, code: number | string): void {
   let fromMail = require("../secrets").mailer.id;
   let subject = "Verification Email";
 
@@ -23,8 +23,5 @@ function sendMail(toMail : string, code: number) {
     if (error) {
       console.log(error.message);
     }
-    // console.log(response);
   });
 }
-
-module.exports = { sendMail };
