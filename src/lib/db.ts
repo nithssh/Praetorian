@@ -1,7 +1,7 @@
 import { Database } from "sqlite3";
 import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
 
-export default class DB {
+export class DB {
   db: Database;
 
   constructor() {

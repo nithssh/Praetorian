@@ -15,7 +15,7 @@ const {
 } = require("./lib/utilities");
 
 const client = new Discord.Client();
-const serverPref = new ServerPreferencesCache();
+const spm = new ServerPreferencesCache();
 
 client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}!`);
@@ -27,7 +27,7 @@ client.on('guildMemberAdd', (guildMember) => {
   // we dont have to check to reassign roles to memebers,
   // which would be critical since stored verified users can't start verification again.
   setTimeout(() => {
-    serverPref.getServerPreferences(guildMember.guild.id, (sp) => {
+    spm.getServerPreferences(guildMember.guild.id, (sp) => {
       guildMember.guild.channels.resolve(sp.cmd_channel).send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
 Use the command \`${sp.prefix}help\` to get more info.`);
     });
@@ -57,9 +57,9 @@ client.on("message", (msg) => {
   if (msg.author.bot) return;
 
   // Get the server preferences
-  serverPref.getServerPreferences(msg.guild.id.toString(), (sp) => {
+  spm.getServerPreferences(msg.guild.id.toString(), (sp) => {
     const prefix = sp.prefix;
-    serverPref.isCmdChannelSetup(msg.guild.id.toString(), (isChannelSetup) => {
+    spm.isCmdChannelSetup(msg.guild.id.toString(), (isChannelSetup) => {
       // make sure message is in the right channel
       if (isChannelSetup && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) {
         if (msg.channel.id != sp.cmd_channel) return;
@@ -217,7 +217,7 @@ None of the other commands and regular operation require admin permissions. The 
                 },
                 reason: "Created by Praetorian",
               }).then((role) => {
-                serverPref.setServerPreferences({
+                spm.setServerPreferences({
                   "server_id": sp.server_id,
                   "domain": sp.domain,
                   "prefix": sp.prefix,
@@ -225,7 +225,7 @@ None of the other commands and regular operation require admin permissions. The 
                   "role_id": role.id.toString(),
                 });
                 msg.channel.send(`Created \`Verified\` role`)
-                serverPref.getServerPreferences(msg.guild.id, (spUpdated) => {
+                spm.getServerPreferences(msg.guild.id, (spUpdated) => {
                   if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
                     roleManager.fetch().then((roleManagerUpdated) => {
                       msg.guild.channels.create('Verification', {
@@ -247,7 +247,7 @@ None of the other commands and regular operation require admin permissions. The 
                         ],
                         reason: `Channel created by Praetorian after setup command by ${msg.author}`
                       }).then((createdChannel) => {
-                        serverPref.setServerPreferences({
+                        spm.setServerPreferences({
                           "server_id": spUpdated.server_id,
                           "domain": spUpdated.domain,
                           "prefix": spUpdated.prefix,
@@ -267,7 +267,7 @@ None of the other commands and regular operation require admin permissions. The 
               });
             } else {
               msg.channel.send(`\`Verified\` role already exists`);
-              serverPref.getServerPreferences(msg.guild.id, (spUpdated) => {
+              spm.getServerPreferences(msg.guild.id, (spUpdated) => {
                 if (msg.guild.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
                   roleManager.fetch().then((roleManagerUpdated) => {
                     msg.guild.channels.create('Verification', {
@@ -289,7 +289,7 @@ None of the other commands and regular operation require admin permissions. The 
                       ],
                       reason: `Channel created by Praetorian after setup command by ${msg.author}`
                     }).then((createdChannel) => {
-                      serverPref.setServerPreferences({
+                      spm.setServerPreferences({
                         "server_id": spUpdated.server_id,
                         "domain": spUpdated.domain,
                         "prefix": spUpdated.prefix,
@@ -323,7 +323,7 @@ None of the other commands and regular operation require admin permissions. The 
             if (sp.domain.includes(cmdParts[3])) {
               msg.reply("provided domain is already part of the filter.")
             } else {
-              serverPref.setServerPreferences({
+              spm.setServerPreferences({
                 "server_id": sp.server_id,
                 "domain": `${sp.domain} ${cmdParts[3]}`,
                 "prefix": sp.prefix,
@@ -338,7 +338,7 @@ None of the other commands and regular operation require admin permissions. The 
                 msg.reply("can't remove the last domain in the filter");
               }
               else {
-                serverPref.setServerPreferences({
+                spm.setServerPreferences({
                   "server_id": sp.server_id,
                   "domain": sp.domain.replace(cmdParts[3], ""),
                   "prefix": sp.prefix,
@@ -352,7 +352,7 @@ None of the other commands and regular operation require admin permissions. The 
             msg.reply(`The domains currently in the domain filter are: ${sp.domain.replace(" ", ", ")}`)
           }
         } else if (cmdParts[1].toLowerCase() === "prefix") {
-          serverPref.setServerPreferences({
+          spm.setServerPreferences({
             "server_id": sp.server_id,
             "domain": sp.domain,
             "prefix": cmdParts[2],
@@ -377,7 +377,7 @@ None of the other commands and regular operation require admin permissions. The 
               }
             );
           }
-          serverPref.setServerPreferences({
+          spm.setServerPreferences({
             "server_id": sp.server_id,
             "domain": sp.domain,
             "prefix": sp.prefix,
