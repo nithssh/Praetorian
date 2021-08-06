@@ -21,6 +21,7 @@
   "author": "dem1se",
   "license": "MPL-2.0",
   "devDependencies": {
+    "@types/nodemailer": "^6.4.4",
     "typescript": "^4.3.5"
   }
 }
