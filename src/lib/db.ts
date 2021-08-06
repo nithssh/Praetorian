@@ -46,7 +46,7 @@ export default class DB {
    *    - Already active and unexpired session
    *    - Previously expired session -> Modifies DB
    */
-  storeSessionInfo(SessionInfo: SessionInfo, callback: Function) {
+  storeSessionInfo(SessionInfo: SessionInfo, callback: (returnCode: string) => void) {
     // Check if user is already verified in the server
     this.db.get(`SELECT * FROM VerifiedTable WHERE discord_id=? AND server_id=?`,
       [
@@ -148,7 +148,7 @@ export default class DB {
     );
   }
 
-  getVerifiedUser(discord_id: string, server_id: string, callback: Function) {
+  getVerifiedUser(discord_id: string, server_id: string, callback: (row: any) => void) {
     this.db.get(`
     SELECT * FROM VerifiedTable
     WHERE discord_id=? AND server_id=?`,
@@ -186,7 +186,7 @@ export default class DB {
       });
   }
 
-  getSessionCode(discord_id: string, server_id: string, callback: Function) {
+  getSessionCode(discord_id: string, server_id: string, callback: (codeOrError: string | number) => void): void {
     this.db.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
       [
         discord_id,
@@ -205,14 +205,14 @@ export default class DB {
       });
   }
 
-  getServerPreferences(server_id: string, callback: Function) {
+  getServerPreferences(server_id: string, callback: (row: any) => void) {
     this.db.get(`SELECT * FROM ServerPreferencesTable WHERE server_id=?`, server_id, (err, row) => {
       callback(row);
     });
   }
 
-  createServerPreferences(server_id: string, callbackOptional: Function) {
-    this.getServerPreferences(server_id, (serverPreferences: undefined | ServerPreferences) => {
+  createServerPreferences(server_id: string, callbackOptional?: () => void) {
+    this.getServerPreferences(server_id, (serverPreferences) => {
       if (serverPreferences == undefined) {
         this.db.run(`INSERT INTO ServerPreferencesTable
         (server_id, prefix, domain)
