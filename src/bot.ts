@@ -211,7 +211,7 @@ None of the other commands and regular operation require admin permissions. The 
           "role_id": role.id.toString(),
         });
         msg.channel.send(`Created \`Verified\` role`)
-      } catch {
+      } catch (err) {
         console.error("Couldn't create verified role");
       }
     } else {

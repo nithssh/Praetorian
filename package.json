@@ -2,7 +2,7 @@
   "name": "praetorian",
   "version": "1.0.0",
   "description": "Email verification discord bot.",
-  "main": "bot.js",
+  "main": "./dist/bot.js",
   "engines": {
     "node": "14.x"
   },
@@ -12,11 +12,12 @@
     "sqlite3": "^5.0.2"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "tsc --build tsconfig.json && node ./dist/bot.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/dem1se/protaerean.git"
+    "url": "git+https://github.com/dem1se/praetorian.git"
   },
   "author": "dem1se",
   "license": "MPL-2.0",
