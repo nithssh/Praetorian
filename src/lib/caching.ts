@@ -2,20 +2,7 @@
  * Could be replaced with an in-memory sqlite3 database, but this
  * is suffiecient for current scale.
  * Might be worth switching to class instances over arbitrary objects
- * 
- * cache = {
-   "<server_id>": {
-     "prefix": "!",
-     "domain": "clg.edu.in",
-     "cmd_channel" : "121234135145133241234"
-   },
-   "<server_id>": {
-     "prefix": "!",
-     "domain": "clg.edu.in",
-     "cmd_channel" : "121234135145133241234"
-   },
- }
- */
+*/
 
 import { queryServerPreferences, setServerPreferences, createServerPreferences } from "./backend";
 import { ServerPreferences } from "./datamodels";
@@ -35,7 +22,7 @@ export class ServerPreferencesCache {
     } else {
       // else query preference
       let row = await queryServerPreferences(server_id);
-      
+
       if (row == undefined) {
         // create preferences if it doesnt exist
         await createServerPreferences(server_id);
@@ -61,7 +48,7 @@ export class ServerPreferencesCache {
       }
     }
   }
-  
+
   async setServerPreferences(sp: ServerPreferences) {
     this.cache[sp.server_id] = {
       "server_id": sp.server_id,

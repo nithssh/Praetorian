@@ -1,6 +1,6 @@
 import { sendMail } from "./email";
 import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
-import { DB } from "./db";
+import { DB, SessionCodeReturns, SessionInfoReturn } from "./db";
 
 const db = new DB();
 
@@ -11,53 +11,41 @@ function createVerficationSession(email: string, discord_id: string, server_id: 
   return session;
 }
 
-export function startVerificationProcess(email: string, discord_id: string, server_id: string, callback: (returnCode: string) => void) {
+export async function startVerificationProcess(email: string, discord_id: string, server_id: string) {
   let session = createVerficationSession(email, discord_id, server_id);
-  db.storeSessionInfo(session, (status) => {
-    if (status == "ServerMemberAlreadyVerified") {
-      callback("ServerMemberAlreadyVerified");
-    } else if (status == "EmailAlreadyTaken") {
-      callback("EmailAlreadyTaken");
-    } else if (status == "SuccessfullyCreated") {
-      sendMail(session.email, session.verification_code);
-      callback("SuccessfullyCreated");
-    } else if (status == "SessionAlreadyActive") {
-      callback("SessionAlreadyActive");
-    } else if (status == "SuccessfullyUpdated") {
-      sendMail(session.email, session.verification_code);
-      callback("SuccessfullyUpdated");
-    } else {
-      console.error("storeSessionInfo returned unexpected value.")
-    }
-  });
+  let status = await db.storeSessionInfo(session);
+
+  if (status == SessionInfoReturn.SuccessfullyCreated || status == SessionInfoReturn.SuccessfullyUpdated) {
+    sendMail(session.email, session.verification_code);
+  }
+  return status;
 }
 
-export function validateCode(userCode: string, discord_id: string, server_id: string, callback: (returnCode: boolean | string) => void) {
-  db.getSessionCode(discord_id, server_id, (dbCode) => {
-    if (dbCode == "NoActiveSession") {
-      callback("NoActiveSession");
-    } else if (dbCode == "LastSessionExpired") {
-      callback("LastSessionExpired");
-    } else if (userCode == dbCode) {
-      storeVerifiedEmail(discord_id, server_id);
-      callback(true);
-    } else {
-      callback(false);
-    }
-  });
+export async function validateCode(userCode: string, discord_id: string, server_id: string): Promise<CodeValidationReturn | SessionCodeReturns> {
+  let dbCode = await db.getSessionCode(discord_id, server_id);
+  if (dbCode in SessionCodeReturns) {
+    return dbCode as SessionCodeReturns;
+  }
+
+  if (userCode == dbCode.toString()) {
+    storeVerifiedEmail(discord_id, server_id);
+    return CodeValidationReturn.ValidationSuccess;
+  } else {
+    return CodeValidationReturn.ValidationFailed;
+  };
 }
 
-function storeVerifiedEmail(discord_id: string, server_id: string) {
-  db.getSessionInfo(discord_id, server_id, function (row: any) {
-    let verifiedProfile = new VerifiedEmail(
-      row.email,
-      row.discord_id,
-      row.server_id,
-      row.timestamp,
-    );
-    db.storeVerifiedUser(verifiedProfile);
-  });
-}
+async function storeVerifiedEmail(discord_id: string, server_id: string) {
+  let row = await db.getSessionInfo(discord_id, server_id);
+  let verifiedProfile = new VerifiedEmail(
+    row.email,
+    row.discord_id,
+    row.server_id,
+    row.timestamp,
+  );
+  await db.storeVerifiedUser(verifiedProfile);
+};
+
 
 export async function queryServerPreferences(server_id: string) {
   let serverPrefs = await db.getServerPreferences(server_id);
@@ -81,11 +69,8 @@ export async function deleteVerifiedUser(discord_id: string, server_id: string) 
       row.server_id,
       row.timestamp
     ));
-  } else {
-    // console.log("User that left wasnt verified");
   }
 }
-
 
 function generateCode(): number {
   return randomIntFromInterval(100000, 999999);
@@ -94,4 +79,9 @@ function generateCode(): number {
 // Generate random integer, within min and max included range
 function randomIntFromInterval(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1) + min);
+}
+
+export enum CodeValidationReturn {
+  ValidationSuccess,
+  ValidationFailed,
 }
