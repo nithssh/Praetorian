@@ -8,7 +8,7 @@ import token from "./token";
 
 
 const client = new Client();
-const spm = new ServerPreferencesCacher();
+const spmgr = new ServerPreferencesCacher();
 
 client.on("ready", () => {
   console.log(`Logged in as ${client!.user!.tag}!`);
@@ -22,7 +22,7 @@ client.on('guildMemberAdd', (guildMember) => {
    * which would be critical since stored verified users can't start verification again.
   */
   setTimeout(async () => {
-    let sp = await spm.getServerPreferences(guildMember.guild.id);
+    let sp = await spmgr.getServerPreferences(guildMember.guild.id);
     if (!sp.cmd_channel) return;
     let textChannel = guildMember!.guild!.channels!.resolve(sp.cmd_channel) as TextChannel;
     if (textChannel) {
@@ -39,7 +39,7 @@ client.on('guildMemberRemove', (guildMember) => {
 client.on('guildCreate', (guild) => {
   createServerPreferences(guild.id.toString());
   if (guild.systemChannel) {
-    try {
+    try { // TODO Improve this intro message
       guild!.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command.
       Praetorian only responds to commands in a specific command channel to reduce server spam. This channel will be created automatically by the setup command.
       Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands once \`!setup\` is run.`)
@@ -53,28 +53,34 @@ client.on('guildCreate', (guild) => {
 });
 
 /*  Commands:
- *      !help -- prints a help message
- *      !verify <email> -- starts verification for the specified email id
- *      !code <code> -- validates the provided code
- *      !setup
- *      !configure <prefix/domain/setcmdchannel> <*newPrefix* / *newDomain* />
+ *    !help -- prints a help message
+ *    !verify <email> -- starts verification for the specified email id
+ *    !code <code> -- validates the provided code
+ *    !setup
+ *    !configure <prefix/domain/setcmdchannel> <*newPrefix* / *newDomain* />
  */
 client.on("message", async (msg: Message) => {
   if (msg.author.bot) return;
   if (typeof msg.channel == typeof DMChannel) return;
-
-  // Get the server preferences
-  let sp = await spm.getServerPreferences(msg!.guild!.id.toString());
-  let isChannelSetup = await spm.isCmdChannelSetup(msg!.guild!.id.toString());
-  const prefix = sp.prefix;
   msg.content = msg.content.toLowerCase();
 
-  // make sure message is in the right channel
-  if (isChannelSetup && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) {
-    if (msg.channel.id != sp.cmd_channel) return;
-  } else {
-    if (msg.channel.type != "dm") { // redundant check to please the linter lol
-      if (!msg.channel.name.includes("verification") && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) return;
+  // Get the server preferences
+  let sp = await spmgr.getServerPreferences(msg!.guild!.id.toString());
+  const prefix = sp.prefix;
+
+  /*
+   * The message will be evaulated if:-
+   *   - it is !setup command
+   *   - it is configure setcmdchannel command
+   *   - msg is in sp.cmd_channel (where sp.cmd_channel)
+   */
+  if (msg.content !== `${prefix}setup`) {
+    if (!isSetChannelCommand(msg)) {
+      if (await spmgr.isCmdChannelSetup(msg.guild!.id.toString())) {
+        if (msg.channel.id !== sp.cmd_channel) {
+          return;
+        }
+      }
     }
   }
 
@@ -100,7 +106,8 @@ client.on("message", async (msg: Message) => {
       if (!sp.domain.includes(msg.content.split(" ")[1].split("@")[1])) {
         issues.push({
           name: "❌ WRONG EMAIL ID",
-          value: `The email must be part of the \`${sp.domain.replace(" ", ", ")}\` domains. Please try again with the right email address [example@${sp.domain.split(" ")[0]}].`
+          value: `The email must be part of the \`${sp.domain.replace(" ", ", ")}\` domains. 
+          Please try again with the right email address [example@${sp.domain.split(" ")[0]}].`
         });
       }
     }
@@ -206,7 +213,7 @@ client.on("message", async (msg: Message) => {
           },
           reason: "Created by Praetorian",
         });
-        await spm.setServerPreferences({
+        await spmgr.setServerPreferences({
           server_id: sp.server_id,
           domain: sp.domain,
           prefix: sp.prefix,
@@ -225,7 +232,7 @@ client.on("message", async (msg: Message) => {
     }
 
     // create the verification channel
-    let spUpdated = await spm.getServerPreferences(msg.guild!.id);
+    let spUpdated = await spmgr.getServerPreferences(msg.guild!.id);
     if (msg.guild!.channels.cache.filter((value) => value.name === "verification").size == 0) {
       let createdChannel = await msg.guild!.channels.create('Verification', {
         topic: "",
@@ -243,7 +250,7 @@ client.on("message", async (msg: Message) => {
         ],
         reason: `Channel created by Praetorian after setup command by ${msg.author.username}`
       });
-      await spm.setServerPreferences({
+      await spmgr.setServerPreferences({
         "server_id": spUpdated.server_id,
         "domain": spUpdated.domain,
         "prefix": spUpdated.prefix,
@@ -288,7 +295,7 @@ client.on("message", async (msg: Message) => {
           }]));
           return;
         } else {
-          spm.setServerPreferences({
+          spmgr.setServerPreferences({
             "server_id": sp.server_id,
             "domain": `${sp.domain} ${cmdParts[3]}`,
             "prefix": sp.prefix,
@@ -307,7 +314,7 @@ client.on("message", async (msg: Message) => {
             return;
           }
           else {
-            spm.setServerPreferences({
+            spmgr.setServerPreferences({
               "server_id": sp.server_id,
               "domain": sp.domain.replace(cmdParts[3], "").trim(),
               "prefix": sp.prefix,
@@ -321,7 +328,7 @@ client.on("message", async (msg: Message) => {
         msg.reply(domainList(sp.domain.split(" ")));
       }
     } else if (cmdParts[1] === "prefix") {
-      spm.setServerPreferences({
+      spmgr.setServerPreferences({
         "server_id": sp.server_id,
         "domain": sp.domain,
         "prefix": cmdParts[2],
@@ -355,7 +362,7 @@ client.on("message", async (msg: Message) => {
           }
         }
       }
-      spm.setServerPreferences({
+      spmgr.setServerPreferences({
         "server_id": sp.server_id,
         "domain": sp.domain,
         "prefix": sp.prefix,
@@ -406,7 +413,7 @@ client.on("message", async (msg: Message) => {
           });
         }
       ).then(() => {
-        msg.react("✔");
+        msg.react("✅");
         msg.reply("Successfully completed `autoverifyall` command. If anyone was left from being verified, it is due to their higher role compared to the bot.");
       }
       );
