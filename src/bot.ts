@@ -1,7 +1,7 @@
 import { Client, DMChannel, EmbedFieldData, Message, Permissions, TextChannel } from "discord.js";
 import { CodeValidationReturn, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode } from "./lib/backend";
 import { ServerPreferencesCacher } from "./lib/caching";
-import { SessionCodeReturns, SessionInfoReturn } from "./lib/db";
+import { SessionCodeReturns, SessionInfoReturn } from "./lib/database";
 import { domainList, errorMessage, fullHelpMessage, miniHelpMessage } from "./lib/embeds";
 import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
 import token from "./token";
