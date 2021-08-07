@@ -23,6 +23,7 @@ client.on('guildMemberAdd', (guildMember) => {
   */
   setTimeout(async () => {
     let sp = await spm.getServerPreferences(guildMember.guild.id);
+    if (!sp.cmd_channel) return;
     let textChannel = guildMember!.guild!.channels!.resolve(sp.cmd_channel) as TextChannel;
     if (textChannel) {
       textChannel.send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
@@ -151,8 +152,10 @@ client.on("message", async (msg: Message) => {
     let status = await validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString());
     if (status in CodeValidationReturn) {
       if (status == CodeValidationReturn.ValidationSuccess) {
+        if (!sp.role_id) return;
+        if (msg.guild?.roles.cache.has(sp.role_id)) return;
         msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
-        msg.reply(`✔ Successfully verified! Welcome to ${msg!.guild!.name}!`);
+        msg.reply(`✅ Successfully verified! Welcome to ${msg.guild!.name}!`);
       } else {
         msg.reply("❌ Entered code is invalid, please try again.");
       }
@@ -191,7 +194,7 @@ client.on("message", async (msg: Message) => {
     });
 
     // create the verified role and the channel
-    if (!roleManager.cache.has(sp.role_id)) {
+    if (!roleManager.cache.has(sp.role_id!)) { // safe to assert role_id as not null, since Map.has(null) will always return false
       try {
         let role = await roleManager.create({
           data: {
@@ -204,11 +207,11 @@ client.on("message", async (msg: Message) => {
           reason: "Created by Praetorian",
         });
         await spm.setServerPreferences({
-          "server_id": sp.server_id,
-          "domain": sp.domain,
-          "prefix": sp.prefix,
-          "cmd_channel": sp.cmd_channel,
-          "role_id": role.id.toString(),
+          server_id: sp.server_id,
+          domain: sp.domain,
+          prefix: sp.prefix,
+          cmd_channel: sp.cmd_channel,
+          role_id: role.id.toString(),
         });
         msg.channel.send(`Created \`Verified\` role`)
       } catch (err) {
@@ -234,7 +237,7 @@ client.on("message", async (msg: Message) => {
             allow: new Permissions(['VIEW_CHANNEL', 'SEND_MESSAGES'])
           },
           {
-            id: spUpdated.role_id,
+            id: spUpdated.role_id!, // can't be null as role_id was *just* created & assigned in the previous step
             deny: new Permissions(['VIEW_CHANNEL'])
           }
         ],
@@ -338,13 +341,17 @@ client.on("message", async (msg: Message) => {
               'SEND_MESSAGES': null
             }
           );
-          if (msg.guild!.roles.resolve(sp.role_id)) {
-            cmdChannel.updateOverwrite(
-              msg.guild!.roles.resolve(sp.role_id)!,
-              {
-                'VIEW_CHANNEL': null
-              }
-            );
+          if (sp.role_id) {
+            if (msg.guild!.roles.resolve(sp.role_id)) {
+              cmdChannel.updateOverwrite(
+                msg.guild!.roles.resolve(sp.role_id)!,
+                {
+                  'VIEW_CHANNEL': null
+                }
+              );
+            }
+          } else {
+            console.log("Didn't update channel overrides as sp.role_id was null")
           }
         }
       }
@@ -379,6 +386,12 @@ client.on("message", async (msg: Message) => {
           value: "The server role 'Praetorian' is too low for this command to work properly. Move praetorian to a higher position in the role list."
         });
       }
+      if (!sp.role_id) {
+        issues.push({
+          name: "❌ VERIFIED ROLE DOESN'T EXIST",
+          value: "The verified role hasn't been set up. Use the setup command to create it."
+        });
+      }
       if (issues.length !== 0) {
         msg.reply(errorMessage(issues));
         return;
@@ -388,7 +401,7 @@ client.on("message", async (msg: Message) => {
         (guildMembers) => {
           guildMembers.forEach((member, key, collection) => {
             if (member.roles.highest.position < msg.guild?.me?.roles.highest.position!) {
-              member.roles.add(sp.role_id);
+              member.roles.add(sp.role_id!); // assured not-null by issues checks.
             }
           });
         }
