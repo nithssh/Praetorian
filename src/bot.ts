@@ -2,7 +2,7 @@ import { Client, DMChannel, EmbedFieldData, Message, Permissions, TextChannel } 
 import { CodeValidationReturn, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode } from "./lib/backend";
 import { ServerPreferencesCacher } from "./lib/caching";
 import { SessionCodeReturns, SessionInfoReturn } from "./lib/database";
-import { domainList, errorMessage, fullHelpMessage, miniHelpMessage } from "./lib/embeds";
+import { domainList, errorMessage, fullHelpMessage, introMessage, miniHelpMessage } from "./lib/embeds";
 import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
 import token from "./token";
 
@@ -39,10 +39,8 @@ client.on('guildMemberRemove', (guildMember) => {
 client.on('guildCreate', (guild) => {
   createServerPreferences(guild.id.toString());
   if (guild.systemChannel) {
-    try { // TODO Improve this intro message
-      guild!.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command.
-      Praetorian only responds to commands in a specific command channel to reduce server spam. This channel will be created automatically by the setup command.
-      Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands once \`!setup\` is run.`)
+    try {
+      guild!.systemChannel.send(introMessage());
     } catch (err) {
       console.error(`Unable to send message in server's system channel. ${err}`)
     }

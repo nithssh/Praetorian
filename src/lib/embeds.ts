@@ -67,3 +67,23 @@ export function domainList(domains: string[]) {
     .setTitle("‎")
     .addFields(list);
 }
+
+export function introMessage() {
+  return new MessageEmbed()
+    .setAuthor('Praetorian', img)
+    .setColor('#cccccc')
+    .setTitle("Hey!")
+    .setDescription(`Before I can start working properly, a few things have to be done.`)
+    .addFields([
+      {
+        name: "1️⃣ Use the \`!setup\` command",
+        value: `This will create a 'Verified' role and tranfer the basic permission from everyone to this role instead.
+        It will also create a verification channel, which is the only place the bot will respond to regular commands to reduce spam.`
+      },
+      {
+        name: "2️⃣ Use the \`!help\` command in the verification channel",
+        value: "This will list all the available commands, along with a description of what they do."
+      }
+    ])
+    .setFooter('Version 1.0.0-beta', img);
+}
