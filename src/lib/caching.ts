@@ -7,7 +7,7 @@
 import { queryServerPreferences, setServerPreferences, createServerPreferences } from "./backend";
 import { ServerPreferences } from "./datamodels";
 
-export class ServerPreferencesCache {
+export class ServerPreferencesCacher {
   cache: { [index: string]: ServerPreferences };
 
   constructor() {

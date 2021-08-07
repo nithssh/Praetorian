@@ -49,8 +49,12 @@ export function isValidConfigureCommand(message: Message) {
     return false;
   }
   if (cmdParts[1].toLowerCase() == "domain") {
+    if (cmdParts[2] === undefined) {
+      return false;
+    }
+
     if (cmdParts[2].toLowerCase() == "add" || cmdParts[2].toLowerCase() == "remove") {
-      let domainPattern = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/
+      const domainPattern = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/
       if (!domainPattern.test(cmdParts[3])) {
         return false;
       }
