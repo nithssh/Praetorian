@@ -130,7 +130,7 @@ export class DB {
     }
   };
 
-  // TODO return class instance instead of raw row data
+  // Maybe return class instance instead of raw row data
   async getVerifiedUser(discord_id: string, server_id: string): Promise<any> {
     let verifiedUser = await this.get(`SELECT * FROM VerifiedTable
       WHERE discord_id=? AND server_id=?`,
