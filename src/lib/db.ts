@@ -156,9 +156,10 @@ export class DB {
   }
 
   async setSeverPreferences(ServerPreferences: ServerPreferences) {
-    await this.get(`UPDATE ServerPreferencesTable 
-                SET domain=?, prefix=?, cmd_channel=?, role_id=?
-                WHERE server_id=?`,
+    await this.get(`
+      UPDATE ServerPreferencesTable 
+      SET domain=?, prefix=?, cmd_channel=?, role_id=?
+      WHERE server_id=?`,
       [
         ServerPreferences.domain,
         ServerPreferences.prefix,

@@ -16,7 +16,7 @@ export function sendMail(toMail : string, code: number | string): void {
     from: fromMail,
     to: toMail,
     subject: subject,
-    text: `Verification code: ${code}\nUse the command !code <code> to verify this code.`, // Improve the message body???
+    text: `Verification code: ${code}\nUse the command "code" in the server's verificaiton channel to verify yourself.`, // Improve the message body???
   };
 
   transporter.sendMail(mailOptions, (error, response) => {

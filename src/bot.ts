@@ -1,12 +1,14 @@
-import { DMChannel, Message, TextChannel, Client, Permissions, MessageEmbed } from "discord.js";
-import { ServerPreferencesCache } from "./lib/caching";
-import { startVerificationProcess, validateCode, createServerPreferences, deleteVerifiedUser, CodeValidationReturn } from "./lib/backend";
-import { isValidCodeCommand, isValidVerifyCommand, isValidConfigureCommand, isSetChannelCommand } from "./lib/utilities";
-import token from "./token";
+import { Client, DMChannel, EmbedFieldData, Message, Permissions, TextChannel } from "discord.js";
+import { CodeValidationReturn, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode } from "./lib/backend";
+import { ServerPreferencesCacher } from "./lib/caching";
 import { SessionCodeReturns, SessionInfoReturn } from "./lib/db";
+import { domainList, errorMessage, fullHelpMessage, miniHelpMessage } from "./lib/embeds";
+import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
+import token from "./token";
+
 
 const client = new Client();
-const spm = new ServerPreferencesCache();
+const spm = new ServerPreferencesCacher();
 
 client.on("ready", () => {
   console.log(`Logged in as ${client!.user!.tag}!`);
@@ -14,9 +16,11 @@ client.on("ready", () => {
 
 // Note: https://stackoverflow.com/a/64632815/8189464
 client.on('guildMemberAdd', (guildMember) => {
-  // if the guildMemeberRemove deleteVerifiedUser() works properly all the time,
-  // we dont have to check to reassign roles to memebers,
-  // which would be critical since stored verified users can't start verification again.
+  /* Notes:
+   * if the guildMemeberRemove deleteVerifiedUser() works properly all the time,
+   * we dont have to check to reassign roles to memebers,
+   * which would be critical since stored verified users can't start verification again.
+  */
   setTimeout(async () => {
     let sp = await spm.getServerPreferences(guildMember.guild.id);
     let textChannel = guildMember!.guild!.channels!.resolve(sp.cmd_channel) as TextChannel;
@@ -34,9 +38,13 @@ client.on('guildMemberRemove', (guildMember) => {
 client.on('guildCreate', (guild) => {
   createServerPreferences(guild.id.toString());
   if (guild.systemChannel) {
-    guild!.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command.
-    Praetorian only responds to commands in a specific command channel to reduce server spam. This channel will be created automatically by the setup command.
-    Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands once \`!setup\` is run.`)
+    try {
+      guild!.systemChannel.send(`Hey! First things first, don't forget to use the \`!setup\` command.
+      Praetorian only responds to commands in a specific command channel to reduce server spam. This channel will be created automatically by the setup command.
+      Also, make sure to check out the \`!help\` command for the documentation and the rest of the configuration commands once \`!setup\` is run.`)
+    } catch (err) {
+      console.error(`Unable to send message in server's system channel. ${err}`)
+    }
   } else {
     console.error("No system channel present in the server to send intro message in.")
   }
@@ -58,71 +66,45 @@ client.on("message", async (msg: Message) => {
   let sp = await spm.getServerPreferences(msg!.guild!.id.toString());
   let isChannelSetup = await spm.isCmdChannelSetup(msg!.guild!.id.toString());
   const prefix = sp.prefix;
+  msg.content = msg.content.toLowerCase();
 
   // make sure message is in the right channel
   if (isChannelSetup && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) {
     if (msg.channel.id != sp.cmd_channel) return;
   } else {
     if (msg.channel.type != "dm") { // redundant check to please the linter lol
-      if (!msg.channel.name.toLowerCase().includes("verification") && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) return;
+      if (!msg.channel.name.includes("verification") && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) return;
     }
   }
 
-  if (msg.content.toLowerCase().startsWith(`${prefix}help`)) {
-    const img = "https://raw.githubusercontent.com/Dem1se/Praetorian/master/docs/avatar.png?token=AFJ5V4KMOJUJOEIPOVP3FGDA7K2SS";
+  if (msg.content.startsWith(`${prefix}help`)) {
     let embedMessage;
     if (msg!.guild!.member(msg.author)!.hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
-      embedMessage = new MessageEmbed()
-        .setAuthor('Full Help Message', img)
-        .setColor('#cccccc')
-        .setTitle("Praetorian")
-        .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
-        .addFields(
-          {
-            name: "User Commands", value: `
-  \`${prefix}verify user@example.com\` — Start user verification for the specified email id.\n
-  \`${prefix}code 123456\` — Validate the entered verification code.\n
-  \`${prefix}help\` — Print this help message.\n
-              `},
-          {
-            name: "Admin Commands", value: `
-  \`${prefix}setup\` — Set up this server for the bot to work. Creates a verified role, removes all permissions from the everyone role, and creates a verification channel.\n
-  \`${prefix}configure domain get\` — List the domains in the domain filter.\n
-  \`${prefix}configure domain add example.com\` — Add the specified domain to the domain filter.\n
-  \`${prefix}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
-  \`${prefix}configure prefix !\` — Set the bot's command prefix symbol.\n
-  \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
-  \`${prefix}configure autoverifyall !\` — Add the verified role to all the current server member. This option is for pre-existing communities, 
-that want to switch over to this bot for auto verification.\n
-              `}
-        )
-        .setFooter('Version 1.0.0-beta', img);
+      embedMessage = fullHelpMessage(prefix);
     } else {
-      embedMessage = new MessageEmbed()
-        .setAuthor('Help Message', img)
-        .setColor('#cccccc')
-        .setTitle("Praetorian")
-        .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
-        .addFields(
-          {
-            name: "User Commands", value: `
-  \`${prefix}verify user@example.com\` — Start user verification for the specified email id.\n
-  \`${prefix}code 123456\` — Validate the entered verification code.\n
-  \`${prefix}help\` — Print this help message.\n
-              `}
-        )
-        .setFooter('Version 1.0.0-beta', img);
+      embedMessage = miniHelpMessage(prefix);
     }
     msg.channel.send(embedMessage);
   }
 
-  if (msg.content.toLowerCase().startsWith(`${prefix}verify`)) {
+  if (msg.content.startsWith(`${prefix}verify`)) {
+    let issues: EmbedFieldData[] = [];
     if (!isValidVerifyCommand(msg)) {
-      msg.reply("Invalid command. Must be !verify <*email*>, where *email* is a valid email address.");
-      return;
+      issues.push({
+        name: "❌ INVALID COMMAND",
+        value: "The command was not properly formed. Check help for usage."
+      });
     }
-    if (!sp.domain.includes(msg.content.split(" ")[1].split("@")[1].toLowerCase())) {
-      msg.reply(`The email must be part of the \`${sp.domain.replace(" ", ", ")}\` domains. Please try again with the right email address [example@${sp.domain.split(" ")[0]}].`);
+    if (msg.content.split(" ")[1] !== undefined) {
+      if (!sp.domain.includes(msg.content.split(" ")[1].split("@")[1])) {
+        issues.push({
+          name: "❌ WRONG EMAIL ID",
+          value: `The email must be part of the \`${sp.domain.replace(" ", ", ")}\` domains. Please try again with the right email address [example@${sp.domain.split(" ")[0]}].`
+        });
+      }
+    }
+    if (issues.length !== 0) {
+      msg.reply(errorMessage(issues));
       return;
     }
 
@@ -140,47 +122,65 @@ that want to switch over to this bot for auto verification.\n
     }
   }
 
-  if (msg.content.toLowerCase().startsWith(`${prefix}code`)) {
+  if (msg.content.startsWith(`${prefix}code`)) {
+    let issues: EmbedFieldData[] = [];
     if (!isValidCodeCommand(msg)) {
-      msg.reply("Invalid command. Must be !code <*code*>, where *code* is a 6-digit number.");
-      return;
+      issues.push({
+        name: "❌ INVALID COMMAND",
+        value: "The command was not properly formed. Check help for usage."
+      });
     }
     if (!msg!.guild!.me!.hasPermission(['MANAGE_ROLES'])) {
-      msg.reply(`the \`code\` command requires Praetorian bot to have \`Manage Messages\` permission.`);
+      issues.push({
+        name: "❌ MANAGE ROLES PERMISSION",
+        value: "The bot needs to have `Manage Roles` permission to execute this command"
+      });
+    }
+    if (msg!.guild!.member(msg.author.id)!.roles.highest.position > msg!.guild!.me!.roles.highest.position) {
+      issues.push({
+        name: "❌ PRAETORIAN ROLE POSITION",
+        value: `Praetorian has lower roles than the command user, and hence can't assign role to the user. 
+                Fix this by moving praetorian role to a higher position in the server's roles list`
+      });
+    }
+    if (issues.length !== 0) {
+      msg.reply(errorMessage(issues));
       return;
     }
 
     let status = await validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString());
     if (status in CodeValidationReturn) {
       if (status == CodeValidationReturn.ValidationSuccess) {
-        if (msg!.guild!.member(msg.author.id)!.roles.highest.position > msg!.guild!.me!.roles.highest.position) {
-          msg.reply(`has a higher role than Pratorian. Please fix this by moving the Pratorian role to higher position. 
-Bots can only manage the roles of members with roles all lower than their role in the hierarchy. 
-Discord permissions are weird, I know right. Please contact a admin/mod`);
-        } else {
-          msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
-          msg.reply(`Successfully verified! Welcome to ${msg!.guild!.name}!`);
-        }
+        msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
+        msg.reply(`✔ Successfully verified! Welcome to ${msg!.guild!.name}!`);
       } else {
-        msg.reply("Entered code is invalid, please try again.");
+        msg.reply("❌ Entered code is invalid, please try again.");
       }
     } else if (status in SessionCodeReturns) {
       if (status === SessionCodeReturns.NoActiveSession) {
-        msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
+        msg.reply("No active verification request. Use the `verify` command to start one.");
       } else if (status === SessionCodeReturns.LastSessionExpired) {
-        msg.reply("Your last request has expired. Use the `!verify <email>` command again to try again.");
+        msg.reply("Your last request has expired. Use the `verify` command again to try again.");
       }
     }
   }
 
-  if (msg.content.toLowerCase().startsWith(`${prefix}setup`)) {
+  if (msg.content.startsWith(`${prefix}setup`)) {
+    let issues: EmbedFieldData[] = [];
     if (!msg.guild!.member(msg.author)!.hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
-      msg.reply("Only members with `manage server` and `manager roles` permissions can use this command.");
-      return;
+      issues.push({
+        name: "❌ COMMAND USER PERMISSION",
+        value: "Only members with `Manage Server` and `Manager Roles` permissions can use this command."
+      });
     }
     if (!msg.guild!.me!.hasPermission('ADMINISTRATOR')) {
-      msg.reply(`the \`setup\` command requires Praetorian bot to have \`administrator\` permission.
-None of the other commands and regular operation require admin permissions. The permission can be removed after the setup command.`);
+      issues.push({
+        name: "❌ ADMIN PERMISSION",
+        value: "Praetorian needs admin permission to perform this command"
+      });
+    }
+    if (issues.length !== 0) {
+      msg.reply(errorMessage(issues));
       return;
     }
 
@@ -215,12 +215,15 @@ None of the other commands and regular operation require admin permissions. The 
         console.error("Couldn't create verified role");
       }
     } else {
-      msg.channel.send(`\`Verified\` role already exists`);
+      msg.channel.send(errorMessage([{
+        name: "ℹ VERIFIED ROLE ALREADY EXISTS",
+        value: "Verified role wasn't created as one previously created already exists."
+      }]));
     }
 
     // create the verification channel
     let spUpdated = await spm.getServerPreferences(msg.guild!.id);
-    if (msg.guild!.channels.cache.filter((value) => value.name.toLowerCase() === "verification").size == 0) {
+    if (msg.guild!.channels.cache.filter((value) => value.name === "verification").size == 0) {
       let createdChannel = await msg.guild!.channels.create('Verification', {
         topic: "",
         nsfw: false,
@@ -246,25 +249,41 @@ None of the other commands and regular operation require admin permissions. The 
       });
       msg.channel.send(`Created and Updated \`#verification\` channel`);
     } else {
-      msg.channel.send(`Channel named \`#verification\` already exisits`);
+      msg.channel.send(errorMessage([{
+        name: "❌ CHANNEL WITH NAME EXISTS",
+        value: "A channel named verification already exists. To fix this run this command again after deleting the channel named verification"
+      }]));
     };
   }
 
-  if (msg.content.toLowerCase().startsWith(`${prefix}configure`)) {
+  if (msg.content.startsWith(`${prefix}configure`)) {
+    let issues: EmbedFieldData[] = [];
     if (!isValidConfigureCommand(msg)) {
-      msg.reply("Invalid command. Check help for usage.")
-      return;
+      issues.push({
+        name: "❌ INVALID COMMAND",
+        value: "The command was not properly formed. Check help for usage."
+      });
     }
     if (!msg.guild!.member(msg.author)!.hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
-      msg.reply("Only members with `manage server` and `manager roles` permissions can use this command.");
+      issues.push({
+        name: "❌ COMMAND USER PERMISSION",
+        value: "Only members with `Manage Server` and `Manager Roles` permissions can use this command ."
+      });
+    }
+    if (issues.length !== 0) {
+      msg.reply(errorMessage(issues));
       return;
     }
 
     let cmdParts = msg.content.split(" ");
-    if (cmdParts[1].toLowerCase() === "domain") {
-      if (cmdParts[2].toLowerCase() == "add") {
+    if (cmdParts[1] === "domain") {
+      if (cmdParts[2] == "add") {
         if (sp.domain.includes(cmdParts[3])) {
-          msg.reply("provided domain is already part of the filter.")
+          msg.reply(errorMessage([{
+            name: "❌ DOMAIN ALREADY IN FILTER",
+            value: "The provided domain is already part of the filter."
+          }]));
+          return;
         } else {
           spm.setServerPreferences({
             "server_id": sp.server_id,
@@ -275,15 +294,19 @@ None of the other commands and regular operation require admin permissions. The 
           });
           msg.reply(`Successfully added \`${cmdParts[3]}\` to the domain filter.`);
         }
-      } else if (cmdParts[2].toLowerCase() == "remove") {
+      } else if (cmdParts[2] == "remove") {
         if (sp.domain.includes(cmdParts[3])) {
           if (sp.domain.split(" ").length === 1) {
-            msg.reply("can't remove the last domain in the filter");
+            msg.reply(errorMessage([{
+              name: "❌ LAST DOMAIN IN FILTER",
+              value: "Can't remove the last domain in the filter."
+            }]));
+            return;
           }
           else {
             spm.setServerPreferences({
               "server_id": sp.server_id,
-              "domain": sp.domain.replace(cmdParts[3], ""),
+              "domain": sp.domain.replace(cmdParts[3], "").trim(),
               "prefix": sp.prefix,
               "cmd_channel": sp.cmd_channel,
               "role_id": sp.role_id
@@ -291,10 +314,10 @@ None of the other commands and regular operation require admin permissions. The 
             msg.reply(`Successfully removed \`${cmdParts[3]}\` from the domain filter.`);
           }
         }
-      } else if (cmdParts[2].toLowerCase() == "get") {
-        msg.reply(`The domains currently in the domain filter are: ${sp.domain.replace(" ", ", ")}`)
+      } else if (cmdParts[2] == "get") {
+        msg.reply(domainList(sp.domain.split(" ")));
       }
-    } else if (cmdParts[1].toLowerCase() === "prefix") {
+    } else if (cmdParts[1] === "prefix") {
       spm.setServerPreferences({
         "server_id": sp.server_id,
         "domain": sp.domain,
@@ -303,7 +326,7 @@ None of the other commands and regular operation require admin permissions. The 
         "role_id": sp.role_id
       });
       msg.reply(`Successfully updated command prefix to \`${cmdParts[2]}\``);
-    } else if (cmdParts[1].toLowerCase() === "setcmdchannel") {
+    } else if (cmdParts[1] === "setcmdchannel") {
       // reset the permissionOverwrites for the previous 
       if (sp.cmd_channel != null) {
         let cmdChannel = msg.guild!.channels.resolve(sp.cmd_channel);
@@ -332,38 +355,51 @@ None of the other commands and regular operation require admin permissions. The 
         "cmd_channel": msg.channel.id.toString(),
         "role_id": sp.role_id
       });
-      if (msg.channel.type != 'dm') {
+      if (msg.channel.type != 'dm') { // check to satisfy the linter
         msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
       }
-    } else if (cmdParts[1].toLowerCase() === "autoverifyall") {
-      // message author needs to have admin
-      // bot needs to have admin
-      // bot needs to have highest -2 role position at least
+
+    } else if (cmdParts[1] === "autoverifyall") {
+      let issues: EmbedFieldData[] = [];
       if (!msg.guild!.member(msg.author)!.hasPermission(['ADMINISTRATOR'])) {
-        msg.reply("Only members with admin can call this command.");
-        return;
+        issues.push({
+          name: "❌ COMMAND USER PERMISSION",
+          value: "Only members with ADMIN can call this command for security purposes."
+        });
       }
       if (!msg.guild!.me!.hasPermission('ADMINISTRATOR')) {
-        msg.reply(`Due to the way managing roles works on Discord, the bot needs to have Admin permission, 
-and also has to be at the top of the permissions list so that this command can work. Only this command requires this much privilige.`)
-        return;
+        issues.push({
+          name: "❌ ADMIN PERMISSION",
+          value: "Praetorian needs admin permission to perform this command"
+        });
       }
       if (msg.guild!.roles.highest.position - msg.guild!.me!.roles.highest.position > 2) {
-        msg.reply(`The bot can only manage the roles of members with roles lower than its role in the list. 
-So please move the Praetorian role to the top or give Praetorian bot the highest role.`);
+        issues.push({
+          name: "❌ PRAETORIAN ROLE POSITION",
+          value: "The server role 'Praetorian' is too low for this command to work properly. Move praetorian to a higher position in the role list."
+        });
+      }
+      if (issues.length !== 0) {
+        msg.reply(errorMessage(issues));
         return;
       }
+
       msg.guild!.members.fetch().then(
         (guildMembers) => {
-          guildMembers.forEach((value, key, collection) => {
-            value.roles.add(sp.role_id);
+          guildMembers.forEach((member, key, collection) => {
+            if (member.roles.highest.position < msg.guild?.me?.roles.highest.position!) {
+              member.roles.add(sp.role_id);
+            }
           });
         }
       ).then(() => {
-        msg.reply("Successfully completed `autoverifyall` command. If anyone was left from being verified, it is due to their higher role compared to the bot.")
+        msg.react("✔");
+        msg.reply("Successfully completed `autoverifyall` command. If anyone was left from being verified, it is due to their higher role compared to the bot.");
       }
       );
     }
   }
+
 });
+
 client.login(token);
