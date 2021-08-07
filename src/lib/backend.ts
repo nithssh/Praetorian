@@ -13,7 +13,7 @@ function createVerficationSession(email: string, discord_id: string, server_id: 
 
 export async function startVerificationProcess(email: string, discord_id: string, server_id: string) {
   let session = createVerficationSession(email, discord_id, server_id);
-  let status = await db.storeSessionInfo(session);
+  let status = await db.setSessionInfo(session);
 
   if (status == SessionInfoReturn.SuccessfullyCreated || status == SessionInfoReturn.SuccessfullyUpdated) {
     sendMail(session.email, session.verification_code);
@@ -43,7 +43,7 @@ async function storeVerifiedEmail(discord_id: string, server_id: string) {
     row.server_id,
     row.timestamp,
   );
-  await db.storeVerifiedUser(verifiedProfile);
+  await db.setVerifiedUser(verifiedProfile);
 };
 
 
@@ -56,8 +56,17 @@ export function setServerPreferences(ServerPreferences: ServerPreferences) {
   db.setSeverPreferences(ServerPreferences);
 }
 
-export async function createServerPreferences(server_id: string) {
-  await db.createServerPreferences(server_id);
+export async function createServerPreferences(server_id: string): Promise<void> {
+  let serverPreferences = await db.getServerPreferences(server_id);
+  if (serverPreferences == undefined) {
+    await db.setSeverPreferences({
+      server_id: server_id,
+      domain: "gmail.com",
+      prefix: "!",
+      cmd_channel: "",
+      role_id: "",
+    });
+  }
 }
 
 export async function deleteVerifiedUser(discord_id: string, server_id: string) {

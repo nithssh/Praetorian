@@ -41,7 +41,7 @@ export class DB {
 
   // Hack to look like node-postgres
   // (and handle async / await operation)
-  async get(sql: string, params: Array<string>): Promise<any> {
+  private async get(sql: string, params: Array<string>): Promise<any> {
     const that = this.db;
     return new Promise(function (resolve, reject) {
       that.all(sql, params, function (error, rows) {
@@ -51,9 +51,15 @@ export class DB {
           resolve(rows[0]);
       });
     });
-  };
+  }
 
-  async storeSessionInfo(SessionInfo: SessionInfo) {
+  async getSessionInfo(discord_id: string, server_id: string) {
+    let row = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
+      [discord_id, server_id]);
+    return row;
+  }
+
+  async setSessionInfo(SessionInfo: SessionInfo) {
     // Check if user is already verified in the server
     let alreadyVerifiedRow = await this.get(`SELECT * FROM VerifiedTable WHERE discord_id=? AND server_id=?`,
       [
@@ -109,8 +115,34 @@ export class DB {
     }
   }
 
+  async getSessionCode(discord_id: string, server_id: string): Promise<SessionCodeReturns | number> {
+    let row = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
+      [discord_id, server_id]);
+
+    if (row === undefined) {
+      return SessionCodeReturns.NoActiveSession;
+    } else {
+      if (row.timestamp - new Date().getTime() > 900000) {
+        return SessionCodeReturns.LastSessionExpired;
+      } else {
+        return row.code;
+      }
+    }
+  };
+
+  // TODO return class instance instead of raw row data
+  async getVerifiedUser(discord_id: string, server_id: string): Promise<any> {
+    let verifiedUser = await this.get(`SELECT * FROM VerifiedTable
+      WHERE discord_id=? AND server_id=?`,
+      [
+        discord_id,
+        server_id
+      ]);
+    return verifiedUser;
+  }
+
   /* Stores the Verified user profile and clears the corresponding SessionInfo*/
-  async storeVerifiedUser(VerifiedEmail: VerifiedEmail) {
+  async setVerifiedUser(VerifiedEmail: VerifiedEmail) {
     await this.get(
       `INSERT INTO VerifiedTable
       (email, discord_id, server_id, timestamp) 
@@ -144,71 +176,44 @@ export class DB {
     Promise.resolve();
   }
 
-  // TODO return class instance instead of raw row data
-  async getVerifiedUser(discord_id: string, server_id: string): Promise<any> {
-    let verifiedUser = await this.get(`SELECT * FROM VerifiedTable
-    WHERE discord_id=? AND server_id=?`,
-      [
-        discord_id,
-        server_id
-      ]);
-    return verifiedUser;
-  }
-
-  async setSeverPreferences(ServerPreferences: ServerPreferences) {
-    await this.get(`
-      UPDATE ServerPreferencesTable 
-      SET domain=?, prefix=?, cmd_channel=?, role_id=?
-      WHERE server_id=?`,
-      [
-        ServerPreferences.domain,
-        ServerPreferences.prefix,
-        ServerPreferences.cmd_channel,
-        ServerPreferences.role_id,
-        ServerPreferences.server_id,
-      ]);
-    Promise.resolve()
-  }
-
-  async getSessionInfo(discord_id: string, server_id: string) {
-    let row = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
-      [discord_id, server_id]);
-    return row;
-  };
-
-
-  async getSessionCode(discord_id: string, server_id: string): Promise<SessionCodeReturns | number> {
-    let row = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
-      [discord_id, server_id]);
-
-    if (row === undefined) {
-      return SessionCodeReturns.NoActiveSession;
-    } else {
-      if (row.timestamp - new Date().getTime() > 900000) {
-        return SessionCodeReturns.LastSessionExpired;
-      } else {
-        return row.code;
-      }
-    }
-  };
-
   async getServerPreferences(server_id: string): Promise<any> {
     let result = await this.get(`SELECT * FROM ServerPreferencesTable WHERE server_id=?`, [server_id]);
     return result;
   }
 
-  async createServerPreferences(server_id: string) {
-    let serverPreferences = await this.getServerPreferences(server_id)
-    if (serverPreferences == undefined) {
-      await this.get(`INSERT INTO ServerPreferencesTable (server_id, prefix, domain) VALUES (?, ?, ?)`,
+  async setSeverPreferences(ServerPreferences: ServerPreferences) {
+    if (await this.doesServerPreferenceExist(ServerPreferences.server_id)) {
+      await this.get(`
+        UPDATE ServerPreferencesTable
+        SET domain=?, prefix=?, cmd_channel=?, role_id=?
+        WHERE server_id=?`,
         [
-          server_id,
-          "!",
-          "gmail.com"
-        ]);
-      Promise.resolve();
+          ServerPreferences.domain,
+          ServerPreferences.prefix,
+          ServerPreferences.cmd_channel,
+          ServerPreferences.role_id,
+          ServerPreferences.server_id
+        ]
+      );
+    } else {
+      await this.get(
+        `INSERT INTO ServerPreferencesTable (server_id, prefix, domain, cmd_channel, role_id) VALUES (?, ?, ?, ?, ?)`,
+        [
+          ServerPreferences.server_id,
+          ServerPreferences.prefix,
+          ServerPreferences.domain,
+          ServerPreferences.cmd_channel,
+          ServerPreferences.role_id
+        ]
+      );
     }
   }
+
+  private async doesServerPreferenceExist(server_id: string) {
+    let sp = await this.getServerPreferences(server_id);
+    return (sp !== undefined);
+  }
+
 }
 
 export enum SessionCodeReturns {
