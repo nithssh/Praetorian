@@ -1,12 +1,11 @@
-import { DMChannel, Guild, GuildMember, Message, TextChannel } from "discord.js";
-
-import Discord from "discord.js";
-import token from "./token";
+import { DMChannel, Message, TextChannel, Client, Permissions, MessageEmbed } from "discord.js";
 import { ServerPreferencesCache } from "./lib/caching";
-import { startVerificationProcess, validateCode, createServerPreferences, deleteVerifiedUser } from "./lib/backend";
+import { startVerificationProcess, validateCode, createServerPreferences, deleteVerifiedUser, CodeValidationReturn } from "./lib/backend";
 import { isValidCodeCommand, isValidVerifyCommand, isValidConfigureCommand, isSetChannelCommand } from "./lib/utilities";
+import token from "./token";
+import { SessionCodeReturns, SessionInfoReturn } from "./lib/db";
 
-const client = new Discord.Client();
+const client = new Client();
 const spm = new ServerPreferencesCache();
 
 client.on("ready", () => {
@@ -57,8 +56,8 @@ client.on("message", async (msg: Message) => {
 
   // Get the server preferences
   let sp = await spm.getServerPreferences(msg!.guild!.id.toString());
-  const prefix = sp.prefix;
   let isChannelSetup = await spm.isCmdChannelSetup(msg!.guild!.id.toString());
+  const prefix = sp.prefix;
 
   // make sure message is in the right channel
   if (isChannelSetup && !isSetChannelCommand(msg) && msg.content !== `${prefix}setup`) {
@@ -73,7 +72,7 @@ client.on("message", async (msg: Message) => {
     const img = "https://raw.githubusercontent.com/Dem1se/Praetorian/master/docs/avatar.png?token=AFJ5V4KMOJUJOEIPOVP3FGDA7K2SS";
     let embedMessage;
     if (msg!.guild!.member(msg.author)!.hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
-      embedMessage = new Discord.MessageEmbed()
+      embedMessage = new MessageEmbed()
         .setAuthor('Full Help Message', img)
         .setColor('#cccccc')
         .setTitle("Praetorian")
@@ -99,7 +98,7 @@ that want to switch over to this bot for auto verification.\n
         )
         .setFooter('Version 1.0.0-beta', img);
     } else {
-      embedMessage = new Discord.MessageEmbed()
+      embedMessage = new MessageEmbed()
         .setAuthor('Help Message', img)
         .setColor('#cccccc')
         .setTitle("Praetorian")
@@ -127,19 +126,18 @@ that want to switch over to this bot for auto verification.\n
       return;
     }
 
-    startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id.toString(), (status) => {
-      if (status === "EmailAlreadyTaken") {
-        msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
-      } else if (status === "SessionAlreadyActive") {
-        msg.reply(`Verification code already requested within the last 15 mins. Check your email for the code, or try again later.`);
-      } else if (status === "SuccessfullyCreated") {
-        msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
-      } else if (status === "SuccessfullyUpdated") {
-        msg.reply(`Verification re-requested successfully. Check your email for the code.`);
-      } else if (status === "ServerMemberAlreadyVerified") {
-        msg.reply(`you are already verified in this server.`)
-      }
-    });
+    let status = await startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id.toString());
+    if (status === SessionInfoReturn.EmailAlreadyTaken) {
+      msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
+    } else if (status === SessionInfoReturn.SessionAlreadyActive) {
+      msg.reply(`Verification code already requested within the last 15 mins. Check your email for the code, or try again later.`);
+    } else if (status === SessionInfoReturn.SuccessfullyCreated) {
+      msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
+    } else if (status === SessionInfoReturn.SuccessfullyUpdated) {
+      msg.reply(`Verification re-requested successfully. Check your email for the code.`);
+    } else if (status === SessionInfoReturn.ServerMemberAlreadyVerified) {
+      msg.reply(`you are already verified in this server.`)
+    }
   }
 
   if (msg.content.toLowerCase().startsWith(`${prefix}code`)) {
@@ -152,29 +150,27 @@ that want to switch over to this bot for auto verification.\n
       return;
     }
 
-    validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString(), (isSuccess) => {
-      if (isSuccess === true) {
+    let status = await validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString());
+    if (status in CodeValidationReturn) {
+      if (status == CodeValidationReturn.ValidationSuccess) {
         if (msg!.guild!.member(msg.author.id)!.roles.highest.position > msg!.guild!.me!.roles.highest.position) {
           msg.reply(`has a higher role than Pratorian. Please fix this by moving the Pratorian role to higher position. 
 Bots can only manage the roles of members with roles all lower than their role in the hierarchy. 
 Discord permissions are weird, I know right. Please contact a admin/mod`);
         } else {
           msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
+          msg.reply(`Successfully verified! Welcome to ${msg!.guild!.name}!`);
         }
-        // msg.guild.roles.fetch()
-        //   .then((roles) => {
-        //     return roles.cache.find(r => r.id == sp.role_id);
-        //   })
-        //   .then((role) => msg.guild.member(msg.author.id).roles.add(role));
-        msg.reply(`Successfully verified! Welcome to ${msg!.guild!.name}!`);
-      } else if (isSuccess === 'NoActiveSession') {
-        msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
-      } else if (isSuccess === 'LastSessionExpired') {
-        msg.reply("Your last request has expired. Use the `!verify <email>` command again to try again.");
       } else {
         msg.reply("Entered code is invalid, please try again.");
       }
-    });
+    } else if (status in SessionCodeReturns) {
+      if (status === SessionCodeReturns.NoActiveSession) {
+        msg.reply("No active verification request. Use the `!verify <email>` command to start one.");
+      } else if (status === SessionCodeReturns.LastSessionExpired) {
+        msg.reply("Your last request has expired. Use the `!verify <email>` command again to try again.");
+      }
+    }
   }
 
   if (msg.content.toLowerCase().startsWith(`${prefix}setup`)) {
@@ -188,124 +184,70 @@ None of the other commands and regular operation require admin permissions. The 
       return;
     }
 
-    msg.guild!.roles.fetch()
-      // clear the everyone role
-      .then((roleManager) => {
-        roleManager.everyone.setPermissions([]).then(() => {
-          msg.channel.send(`Modified \`everyone\` role's permissions`)
-        });
-        return roleManager;
-      })
-      // create the verified role and the channel
-      .then(async (roleManager) => {
-        if (!roleManager.cache.has(sp.role_id)) {
-          roleManager.create({
-            data: {
-              name: "Verified",
-              position: 1,
-              permissions: new Discord.Permissions()
-                .add('VIEW_CHANNEL')
-                .add('CREATE_INSTANT_INVITE')
-                .add('CHANGE_NICKNAME')
-                .add('SEND_MESSAGES')
-                .add('EMBED_LINKS')
-                .add('ATTACH_FILES')
-                .add('USE_EXTERNAL_EMOJIS')
-                .add('READ_MESSAGE_HISTORY')
-                .add('CONNECT')
-                .add('SPEAK')
-                .add('STREAM')
-                .add('USE_VAD')
-            },
-            reason: "Created by Praetorian",
-          }).then(async (role) => {
-            spm.setServerPreferences({
-              "server_id": sp.server_id,
-              "domain": sp.domain,
-              "prefix": sp.prefix,
-              "cmd_channel": sp.cmd_channel,
-              "role_id": role.id.toString(),
-            });
-            msg.channel.send(`Created \`Verified\` role`)
-            let spUpdated = await spm.getServerPreferences(msg.guild!.id);
-            if (msg.guild!.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
-              roleManager.fetch().then((roleManagerUpdated) => {
-                msg.guild!.channels.create('Verification', {
-                  topic: "",
-                  nsfw: false,
-                  position: 1,
-                  permissionOverwrites: [
-                    {
-                      id: roleManagerUpdated.everyone,
-                      allow: new Discord.Permissions()
-                        .add('VIEW_CHANNEL')
-                        .add('SEND_MESSAGES')
-                    },
-                    {
-                      id: spUpdated.role_id,
-                      deny: new Discord.Permissions()
-                        .add('VIEW_CHANNEL')
-                    }
-                  ],
-                  reason: `Channel created by Praetorian after setup command by ${msg.author}`
-                }).then((createdChannel) => {
-                  spm.setServerPreferences({
-                    "server_id": spUpdated.server_id,
-                    "domain": spUpdated.domain,
-                    "prefix": spUpdated.prefix,
-                    "cmd_channel": createdChannel.id,
-                    "role_id": spUpdated.role_id
-                  });
-                });
-                msg.channel.send(`Created and Updated \`#verification\` channel`);
-              });
-            } else {
-              msg.channel.send(`Channel named \`#verification\` already exisits`);
-            }
-          }).catch((reason) => {
-            console.error(`${reason}. Couldn't create the Verified role`)
-            return Promise.reject(roleManager);
-          });
-        } else {
-          msg.channel.send(`\`Verified\` role already exists`);
-          let spUpdated = await spm.getServerPreferences(msg.guild!.id);
-          if (msg.guild!.channels.cache.filter((value, key, collection) => value.name.toLowerCase() === "verification").size == 0) {
-            roleManager.fetch().then((roleManagerUpdated) => {
-              msg.guild!.channels.create('Verification', {
-                topic: "Verify using the `!verify` command to get access to the server",
-                nsfw: false,
-                position: 1,
-                permissionOverwrites: [
-                  {
-                    id: roleManagerUpdated.everyone,
-                    allow: new Discord.Permissions()
-                      .add('VIEW_CHANNEL')
-                      .add('SEND_MESSAGES')
-                  },
-                  {
-                    id: spUpdated.role_id,
-                    deny: new Discord.Permissions()
-                      .add('VIEW_CHANNEL')
-                  }
-                ],
-                reason: `Channel created by Praetorian after setup command by ${msg.author}`
-              }).then((createdChannel) => {
-                spm.setServerPreferences({
-                  "server_id": spUpdated.server_id,
-                  "domain": spUpdated.domain,
-                  "prefix": spUpdated.prefix,
-                  "cmd_channel": createdChannel.id,
-                  "role_id": spUpdated.role_id
-                });
-              });
-              msg.channel.send(`Created and Updated \`#verification\` channel`);
-            });
-          } else {
-            msg.channel.send(`Channel named \`#verification\` already exisits`);
-          }
+    // clear the everyone role
+    let roleManager = await msg.guild!.roles.fetch();
+    await roleManager.everyone.setPermissions([]).then(() => {
+      msg.channel.send(`Modified \`everyone\` role's permissions`)
+    });
 
-        }
+    // create the verified role and the channel
+    if (!roleManager.cache.has(sp.role_id)) {
+      try {
+        let role = await roleManager.create({
+          data: {
+            name: "Verified",
+            position: 1,
+            permissions: new Permissions(['VIEW_CHANNEL', 'CREATE_INSTANT_INVITE', 'CHANGE_NICKNAME',
+              'SEND_MESSAGES', 'EMBED_LINKS', 'ATTACH_FILES', 'USE_EXTERNAL_EMOJIS', 'READ_MESSAGE_HISTORY',
+              'CONNECT', 'SPEAK', 'STREAM', 'USE_VAD'])
+          },
+          reason: "Created by Praetorian",
+        });
+        await spm.setServerPreferences({
+          "server_id": sp.server_id,
+          "domain": sp.domain,
+          "prefix": sp.prefix,
+          "cmd_channel": sp.cmd_channel,
+          "role_id": role.id.toString(),
+        });
+        msg.channel.send(`Created \`Verified\` role`)
+      } catch {
+        console.error("Couldn't create verified role");
+      }
+    } else {
+      msg.channel.send(`\`Verified\` role already exists`);
+    }
+
+    // create the verification channel
+    let spUpdated = await spm.getServerPreferences(msg.guild!.id);
+    if (msg.guild!.channels.cache.filter((value) => value.name.toLowerCase() === "verification").size == 0) {
+      let createdChannel = await msg.guild!.channels.create('Verification', {
+        topic: "",
+        nsfw: false,
+        position: 1,
+        permissionOverwrites: [
+          {
+            id: roleManager.everyone,
+            allow: new Permissions(['VIEW_CHANNEL', 'SEND_MESSAGES'])
+          },
+          {
+            id: spUpdated.role_id,
+            deny: new Permissions(['VIEW_CHANNEL'])
+          }
+        ],
+        reason: `Channel created by Praetorian after setup command by ${msg.author.username}`
       });
+      await spm.setServerPreferences({
+        "server_id": spUpdated.server_id,
+        "domain": spUpdated.domain,
+        "prefix": spUpdated.prefix,
+        "cmd_channel": createdChannel.id,
+        "role_id": spUpdated.role_id
+      });
+      msg.channel.send(`Created and Updated \`#verification\` channel`);
+    } else {
+      msg.channel.send(`Channel named \`#verification\` already exisits`);
+    };
   }
 
   if (msg.content.toLowerCase().startsWith(`${prefix}configure`)) {
@@ -423,6 +365,5 @@ So please move the Praetorian role to the top or give Praetorian bot the highest
       );
     }
   }
-}
-)
+});
 client.login(token);
