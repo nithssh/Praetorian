@@ -63,8 +63,8 @@ export async function createServerPreferences(server_id: string): Promise<void> 
       server_id: server_id,
       domain: "gmail.com",
       prefix: "!",
-      cmd_channel: "",
-      role_id: "",
+      cmd_channel: null,
+      role_id: null,
     });
   }
 }

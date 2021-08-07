@@ -41,7 +41,7 @@ export class DB {
 
   // Hack to look like node-postgres
   // (and handle async / await operation)
-  private async get(sql: string, params: Array<string>): Promise<any> {
+  private async get(sql: string, params: Array<string|null>): Promise<any> {
     const that = this.db;
     return new Promise(function (resolve, reject) {
       that.all(sql, params, function (error, rows) {

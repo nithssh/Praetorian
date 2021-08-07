@@ -31,7 +31,7 @@ export class VerifiedEmail {
 export interface ServerPreferences {
   domain: string;
   prefix: string;
-  cmd_channel: string;
-  role_id: string;
+  cmd_channel: string | null;
+  role_id: string | null;
   server_id: string;
 }
