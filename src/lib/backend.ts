@@ -1,5 +1,5 @@
 import { sendMail } from "./email";
-import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
+import { ServerPreferences, SessionInfo, VerifiedProfile } from "./datamodels";
 import { DB, GetSessionCodeResult, SetSessionInfoResult } from "./database";
 
 const db = new DB();
@@ -44,7 +44,7 @@ export async function validateCode(userCode: string, discord_id: string, server_
 
 async function storeVerifiedEmail(discord_id: string, server_id: string) {
   let row = await db.getSessionInfo(discord_id, server_id);
-  let verifiedProfile = new VerifiedEmail(
+  let verifiedProfile = new VerifiedProfile(
     row.email,
     row.discord_id,
     row.server_id,
@@ -80,7 +80,7 @@ export async function createServerPreferences(server_id: string): Promise<void> 
 export async function deleteVerifiedUser(discord_id: string, server_id: string) {
   let row = await db.getVerifiedUser(discord_id, server_id);
   if (row !== undefined) {
-    db.deleteVerifiedUser(new VerifiedEmail(
+    db.deleteVerifiedUser(new VerifiedProfile(
       row.email,
       row.discord_id,
       row.server_id,

@@ -14,7 +14,7 @@ export class SessionInfo {
   }
 }
 
-export class VerifiedEmail {
+export class VerifiedProfile {
   email: string;
   discord_id: string;
   server_id: string;
