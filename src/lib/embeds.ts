@@ -1,5 +1,5 @@
 import { EmbedFieldData, MessageEmbed } from "discord.js";
-const img = "https://raw.githubusercontent.com/Dem1se/Praetorian/master/docs/avatar.png?token=AFJ5V4KMOJUJOEIPOVP3FGDA7K2SS";
+const img = "https://raw.githubusercontent.com/Dem1se/Praetorian/master/docs/avatar.png";
 
 export function fullHelpMessage(prefix: string) {
   return new MessageEmbed()
