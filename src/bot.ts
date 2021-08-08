@@ -1,12 +1,15 @@
 import { Client, DMChannel, EmbedFieldData, Message, Permissions, TextChannel } from "discord.js";
 import dotenv from 'dotenv';
-import { CodeValidationReturn, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode } from "./lib/backend";
+import { ValidateCodeResult, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode, StartVerificationResult } from "./lib/backend";
 import { ServerPreferencesCacher } from "./lib/caching";
-import { SessionCodeReturns, SessionInfoReturn } from "./lib/database";
+import { GetSessionCodeResult } from "./lib/database";
 import { domainList, errorMessage, fullHelpMessage, introMessage, miniHelpMessage } from "./lib/embeds";
 import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
 
 dotenv.config();
+// The variables will return undefined if the value is an empty string too.
+// Note: we don't check the validity of the variable values.
+// hence we catch errors related to using invalid env variable values at reespective scopes.
 if (!process.env.BOT_TOKEN || !process.env.EMAIL_ID || !process.env.EMAIL_PWD) {
   console.error("The .env file has not been setup. Check the README for more info. Exiting application now...");
   process.exit(2);
@@ -120,16 +123,19 @@ client.on("message", async (msg: Message) => {
     }
 
     let status = await startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id.toString());
-    if (status === SessionInfoReturn.EmailAlreadyTaken) {
+    if (status === StartVerificationResult.EmailAlreadyTaken) {
       msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
-    } else if (status === SessionInfoReturn.SessionAlreadyActive) {
+    } else if (status === StartVerificationResult.SessionAlreadyActive) {
       msg.reply(`Verification code already requested within the last 15 mins. Check your email for the code, or try again later.`);
-    } else if (status === SessionInfoReturn.SuccessfullyCreated) {
+    } else if (status === StartVerificationResult.SuccessfullyCreated) {
       msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
-    } else if (status === SessionInfoReturn.SuccessfullyUpdated) {
+    } else if (status === StartVerificationResult.SuccessfullyUpdated) {
       msg.reply(`Verification re-requested successfully. Check your email for the code.`);
-    } else if (status === SessionInfoReturn.ServerMemberAlreadyVerified) {
-      msg.reply(`you are already verified in this server.`)
+    } else if (status === StartVerificationResult.ServerMemberAlreadyVerified) {
+      msg.reply(`You are already verified in this server.`)
+    } else if (status == StartVerificationResult.ActionFailed) {
+      msg.reply(`An error occured trying to send the verification email. Please try again later.`);
+      process.exit(2); // terminate the program since it is misconfigured and can't work properly
     }
   }
 
@@ -160,19 +166,19 @@ client.on("message", async (msg: Message) => {
     }
 
     let status = await validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString());
-    if (status in CodeValidationReturn) {
-      if (status == CodeValidationReturn.ValidationSuccess) {
+    if (status in ValidateCodeResult) {
+      if (status == ValidateCodeResult.ValidationSuccess) {
         if (!sp.role_id) return;
-        if (msg.guild!.roles.cache.has(sp.role_id)) return;
+        if (!msg.guild!.roles.cache.has(sp.role_id)) return;
         msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
         msg.reply(`✅ Successfully verified! Welcome to ${msg.guild!.name}!`);
       } else {
         msg.reply("❌ Entered code is invalid, please try again.");
       }
-    } else if (status in SessionCodeReturns) {
-      if (status === SessionCodeReturns.NoActiveSession) {
+    } else if (status in GetSessionCodeResult) {
+      if (status === GetSessionCodeResult.NoActiveSession) {
         msg.reply("No active verification request. Use the `verify` command to start one.");
-      } else if (status === SessionCodeReturns.LastSessionExpired) {
+      } else if (status === GetSessionCodeResult.LastSessionExpired) {
         msg.reply("Your last request has expired. Use the `verify` command again to try again.");
       }
     }
@@ -425,4 +431,9 @@ client.on("message", async (msg: Message) => {
 
 });
 
-client.login(process.env.BOT_TOKEN);
+try {
+  client.login(process.env.BOT_TOKEN);
+} catch (err) {
+  console.error("Invalid BOT_TOKEN env variable. Please check it before relaunching the bot.", err);
+  process.exit(2);
+}

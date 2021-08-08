@@ -39,8 +39,6 @@ export class DB {
     });
   }
 
-  // Hack to look like node-postgres
-  // (and handle async / await operation)
   private async get(sql: string, params: Array<string|null>): Promise<any> {
     const that = this.db;
     return new Promise(function (resolve, reject) {
@@ -67,7 +65,7 @@ export class DB {
         SessionInfo.server_id
       ]);
     if (alreadyVerifiedRow !== undefined) {
-      return SessionInfoReturn.ServerMemberAlreadyVerified;
+      return SetSessionInfoResult.ServerMemberAlreadyVerified;
     }
 
     // Check if email is already taken
@@ -77,7 +75,7 @@ export class DB {
         SessionInfo.server_id
       ]);
     if (emailBasedRow !== undefined) {
-      return SessionInfoReturn.EmailAlreadyTaken;
+      return SetSessionInfoResult.EmailAlreadyTaken;
     }
 
     // Check if there is no session currently
@@ -98,32 +96,46 @@ export class DB {
           SessionInfo.verification_code,
           SessionInfo.timestamp,
         ]);
-      return SessionInfoReturn.SuccessfullyCreated;
+      return SetSessionInfoResult.SuccessfullyCreated;
     }
 
     // check if session in DB has expired
     let currentDate = new Date();
     if (currentDate.getTime() - currentSessionRow.timestamp <= 900000) {
-      return SessionInfoReturn.SessionAlreadyActive;
+      return SetSessionInfoResult.SessionAlreadyActive;
     } else {
       // session has expired, create the new one
       this.db.run(
         `UPDATE ActiveVeriTable SET code=?, timestamp=? WHERE email=? AND server_id=?`,
         [SessionInfo.verification_code, SessionInfo.timestamp, SessionInfo.email, SessionInfo.server_id]
       );
-      return SessionInfoReturn.SuccessfullyUpdated;
+      return SetSessionInfoResult.SuccessfullyUpdated;
     }
   }
 
-  async getSessionCode(discord_id: string, server_id: string): Promise<SessionCodeReturns | number> {
+  // async deleteSessionInfo(SessionInfo: SessionInfo) {
+  // }
+
+  async deleteSessionInfo (email: string, server_id: string) {
+    await this.get(
+      `DELETE FROM ActiveVeriTable
+      WHERE email=? AND server_id=?`,
+      [
+        email,
+        server_id
+      ]
+    );
+  }
+
+  async getSessionCode(discord_id: string, server_id: string): Promise<GetSessionCodeResult | number> {
     let row = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
       [discord_id, server_id]);
 
     if (row === undefined) {
-      return SessionCodeReturns.NoActiveSession;
+      return GetSessionCodeResult.NoActiveSession;
     } else {
       if (row.timestamp - new Date().getTime() > 900000) {
-        return SessionCodeReturns.LastSessionExpired;
+        return GetSessionCodeResult.LastSessionExpired;
       } else {
         return row.code;
       }
@@ -141,7 +153,6 @@ export class DB {
     return verifiedUser;
   }
 
-  /* Stores the Verified user profile and clears the corresponding SessionInfo*/
   async setVerifiedUser(VerifiedEmail: VerifiedEmail) {
     await this.get(
       `INSERT INTO VerifiedTable
@@ -154,15 +165,6 @@ export class DB {
         VerifiedEmail.timestamp
       ]
     );
-    await this.get(
-      `DELETE FROM ActiveVeriTable
-      WHERE email=? AND server_id=?`,
-      [
-        VerifiedEmail.email,
-        VerifiedEmail.server_id
-      ]
-    );
-    Promise.resolve();
   }
 
   async deleteVerifiedUser(VerifiedEmail: VerifiedEmail) {
@@ -216,12 +218,12 @@ export class DB {
 
 }
 
-export enum SessionCodeReturns {
+export enum GetSessionCodeResult {
   NoActiveSession,
   LastSessionExpired
 }
 
-export enum SessionInfoReturn {
+export enum SetSessionInfoResult {
   ServerMemberAlreadyVerified,
   EmailAlreadyTaken,
   SuccessfullyCreated,
@@ -229,10 +231,10 @@ export enum SessionInfoReturn {
   SuccessfullyUpdated
 }
 
-export enum StartVerificationReturn {
-  SuccessfullyCreated,
-  SuccessfullyUpdated,
-  SessionAlreadyActive,
-  EmailAlreadyTaken,
-  ServerMemberAlreadyVerified,
-}
+// export enum StartVerificationReturn {
+//   SuccessfullyCreated,
+//   SuccessfullyUpdated,
+//   SessionAlreadyActive,
+//   EmailAlreadyTaken,
+//   ServerMemberAlreadyVerified,
+// }

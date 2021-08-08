@@ -1,6 +1,6 @@
 import { sendMail } from "./email";
 import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
-import { DB, SessionCodeReturns, SessionInfoReturn } from "./database";
+import { DB, GetSessionCodeResult, SetSessionInfoResult } from "./database";
 
 const db = new DB();
 
@@ -11,27 +11,34 @@ function createVerficationSession(email: string, discord_id: string, server_id: 
   return session;
 }
 
-export async function startVerificationProcess(email: string, discord_id: string, server_id: string) {
+export async function startVerificationProcess(email: string, discord_id: string, server_id: string): Promise<StartVerificationResult> {
   let session = createVerficationSession(email, discord_id, server_id);
   let status = await db.setSessionInfo(session);
 
-  if (status == SessionInfoReturn.SuccessfullyCreated || status == SessionInfoReturn.SuccessfullyUpdated) {
-    sendMail(session.email, session.verification_code);
+  if (status == SetSessionInfoResult.SuccessfullyCreated || status == SetSessionInfoResult.SuccessfullyUpdated) {
+    let emailSuccess = await sendMail(session.email, session.verification_code);
+    if (emailSuccess) {
+      return status as unknown as StartVerificationResult;
+    } else {
+      await db.deleteSessionInfo(email, server_id);
+      return StartVerificationResult.ActionFailed;
+    }
+  } else {
+    return status as unknown as StartVerificationResult;
   }
-  return status;
 }
 
-export async function validateCode(userCode: string, discord_id: string, server_id: string): Promise<CodeValidationReturn | SessionCodeReturns> {
+export async function validateCode(userCode: string, discord_id: string, server_id: string): Promise<ValidateCodeResult | GetSessionCodeResult> {
   let dbCode = await db.getSessionCode(discord_id, server_id);
-  if (dbCode in SessionCodeReturns) {
-    return dbCode as SessionCodeReturns;
+  if (dbCode in GetSessionCodeResult) {
+    return dbCode as GetSessionCodeResult;
   }
 
   if (userCode == dbCode.toString()) {
     storeVerifiedEmail(discord_id, server_id);
-    return CodeValidationReturn.ValidationSuccess;
+    return ValidateCodeResult.ValidationSuccess;
   } else {
-    return CodeValidationReturn.ValidationFailed;
+    return ValidateCodeResult.ValidationFailed;
   };
 }
 
@@ -44,6 +51,7 @@ async function storeVerifiedEmail(discord_id: string, server_id: string) {
     row.timestamp,
   );
   await db.setVerifiedUser(verifiedProfile);
+  await db.deleteSessionInfo(verifiedProfile.email, verifiedProfile.server_id);
 };
 
 
@@ -90,7 +98,17 @@ function randomIntFromInterval(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1) + min);
 }
 
-export enum CodeValidationReturn {
+export enum ValidateCodeResult {
   ValidationSuccess,
   ValidationFailed,
+}
+
+// extends SetSessionInfoResult
+export enum StartVerificationResult {
+  ServerMemberAlreadyVerified,
+  EmailAlreadyTaken,
+  SuccessfullyCreated,
+  SessionAlreadyActive,
+  SuccessfullyUpdated,
+  ActionFailed
 }
