@@ -1,14 +1,14 @@
 import { createTransport } from 'nodemailer';
 
 export function sendMail(toMail : string, code: number | string): void {
-  let fromMail = require("../secrets").mailer.id;
+  let fromMail = process.env.EMAIL_ID;
   let subject = "Verification Email";
 
   const transporter = createTransport({
     service: "gmail",
     auth: {
       user: fromMail,
-      pass: require("../secrets").mailer.pass,
+      pass: process.env.EMAIL_PWD,
     },
   });
 

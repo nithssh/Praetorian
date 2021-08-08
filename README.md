@@ -10,3 +10,11 @@ Admin permissions can be removed after the setup command is called as only that 
 `verify`, `code`, `help`, `setup`, `configure`
 
 Use the !help command to get an up to date explaination on these commands
+
+## .env File
+The .env file at the root of the project needs to have the following variables.
+`
+BOT_TOKEN=""
+EMAIL_ID=""
+EMAIL_PWD=""
+`

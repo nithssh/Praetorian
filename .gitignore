@@ -7,7 +7,5 @@ node_modules/
 
 # typescript output
 dist/*
-
-token.js
-secrets.js
+*.env
 *.db

@@ -1,11 +1,16 @@
 import { Client, DMChannel, EmbedFieldData, Message, Permissions, TextChannel } from "discord.js";
+import dotenv from 'dotenv';
 import { CodeValidationReturn, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode } from "./lib/backend";
 import { ServerPreferencesCacher } from "./lib/caching";
 import { SessionCodeReturns, SessionInfoReturn } from "./lib/database";
 import { domainList, errorMessage, fullHelpMessage, introMessage, miniHelpMessage } from "./lib/embeds";
 import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
-import token from "./token";
 
+dotenv.config();
+if (!process.env.BOT_TOKEN || !process.env.EMAIL_ID || !process.env.EMAIL_PWD) {
+  console.error("The .env file has not been setup. Check the README for more info. Exiting application now...");
+  process.exit(2);
+}
 
 const client = new Client();
 const spmgr = new ServerPreferencesCacher();
@@ -69,7 +74,7 @@ client.on("message", async (msg: Message) => {
   /*
    * The message will be evaulated if:-
    *   - it is !setup command
-   *   - it is configure setcmdchannel command
+   *   - it is !configure setcmdchannel command
    *   - msg is in sp.cmd_channel (where sp.cmd_channel)
    */
   if (msg.content !== `${prefix}setup`) {
@@ -158,7 +163,7 @@ client.on("message", async (msg: Message) => {
     if (status in CodeValidationReturn) {
       if (status == CodeValidationReturn.ValidationSuccess) {
         if (!sp.role_id) return;
-        if (msg.guild?.roles.cache.has(sp.role_id)) return;
+        if (msg.guild!.roles.cache.has(sp.role_id)) return;
         msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
         msg.reply(`✅ Successfully verified! Welcome to ${msg.guild!.name}!`);
       } else {
@@ -367,7 +372,7 @@ client.on("message", async (msg: Message) => {
         "cmd_channel": msg.channel.id.toString(),
         "role_id": sp.role_id
       });
-      if (msg.channel.type != 'dm') { // check to satisfy the linter
+      if (msg.channel.type != 'dm') { // check to satisfy the linter. This is checked at the start of the onMessage callback.
         msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
       }
 
@@ -394,7 +399,7 @@ client.on("message", async (msg: Message) => {
       if (!sp.role_id) {
         issues.push({
           name: "❌ VERIFIED ROLE DOESN'T EXIST",
-          value: "The verified role hasn't been set up. Use the setup command to create it."
+          value: "The verified role hasn't been set up. Use the \`setup\` command to create it."
         });
       }
       if (issues.length !== 0) {
@@ -402,22 +407,22 @@ client.on("message", async (msg: Message) => {
         return;
       }
 
-      msg.guild!.members.fetch().then(
-        (guildMembers) => {
-          guildMembers.forEach((member, key, collection) => {
-            if (member.roles.highest.position < msg.guild?.me?.roles.highest.position!) {
-              member.roles.add(sp.role_id!); // assured not-null by issues checks.
-            }
-          });
+      let guildMembers = await msg.guild!.members.fetch();
+      guildMembers.forEach((member, key, collection) => {
+        if (member.roles.highest.position < msg.guild!.me!.roles.highest.position!) {
+          member.roles.add(sp.role_id!); // assured not-null by issues checks.
+        } else {
+          msg.reply(errorMessage([{
+            name: "❌ PRAETORIAN ROLE POSITION",
+            value: `Praetorian has lower roles than ${member.displayName}, and hence can't assign role to them.`
+          }]));
         }
-      ).then(() => {
-        msg.react("✅");
-        msg.reply("Successfully completed `autoverifyall` command. If anyone was left from being verified, it is due to their higher role compared to the bot.");
-      }
-      );
+      });
+      msg.react("✅");
+      msg.reply("Successfully completed `autoverifyall` command.");
     }
   }
 
 });
 
-client.login(token);
+client.login(process.env.BOT_TOKEN);
