@@ -1,6 +1,10 @@
 import { createTransport } from 'nodemailer';
 
-export function sendMail(toMail : string, code: number | string): void {
+/** Sends a verification email to the given email address
+ * 
+ * @returns whether the email was sent successfully or not
+*/
+export async function sendMail(toMail: string, code: number | string): Promise<boolean> {
   let fromMail = process.env.EMAIL_ID;
   let subject = "Verification Email";
 
@@ -16,12 +20,19 @@ export function sendMail(toMail : string, code: number | string): void {
     from: fromMail,
     to: toMail,
     subject: subject,
-    text: `Verification code: ${code}\nUse the command "code" in the server's verificaiton channel to verify yourself.`, // Improve the message body???
+    text: `Verification code: ${code}\nUse the command "code" in the server's verification channel to verify yourself.`, // Improve the message body???
   };
 
-  transporter.sendMail(mailOptions, (error, response) => {
-    if (error) {
-      console.log(error.message);
-    }
+  return new Promise(function (resolve, reject) {
+    transporter.sendMail(mailOptions, (error, response) => {
+      if (error) {
+        console.log(error.message);
+        if (error.message.includes("Invalid login")) {
+          console.error(`Configuration Error: .env file has invalid email credentials. Please check them before restarting the bot.`);
+        }
+        resolve(false);
+      }
+      resolve(true);
+    });
   });
 }
