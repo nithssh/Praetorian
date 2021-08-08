@@ -1,5 +1,5 @@
 import { Database } from "sqlite3";
-import { ServerPreferences, SessionInfo, VerifiedEmail } from "./datamodels";
+import { ServerPreferences, SessionInfo, VerifiedProfile } from "./datamodels";
 
 export class DB {
   db: Database;
@@ -153,7 +153,7 @@ export class DB {
     return verifiedUser;
   }
 
-  async setVerifiedUser(VerifiedEmail: VerifiedEmail) {
+  async setVerifiedUser(VerifiedEmail: VerifiedProfile) {
     await this.get(
       `INSERT INTO VerifiedTable
       (email, discord_id, server_id, timestamp) 
@@ -167,7 +167,7 @@ export class DB {
     );
   }
 
-  async deleteVerifiedUser(VerifiedEmail: VerifiedEmail) {
+  async deleteVerifiedUser(VerifiedEmail: VerifiedProfile) {
     await this.get(
       `DELETE FROM VerifiedTable
        WHERE server_id=? AND discord_id=?`,
