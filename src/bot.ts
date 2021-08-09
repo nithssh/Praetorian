@@ -209,7 +209,7 @@ client.on("message", async (msg: Message) => {
       msg.channel.send(`Modified \`everyone\` role's permissions`)
     });
 
-    // create the verified role and the channel
+    // create the verified role
     if (!roleManager.cache.has(sp.role_id!)) { // safe to assert role_id as not null, since Map.has(null) will always return false
       try {
         let role = await roleManager.create({
@@ -242,7 +242,7 @@ client.on("message", async (msg: Message) => {
 
     // create the verification channel
     let spUpdated = await spmgr.getServerPreferences(msg.guild!.id);
-    if (msg.guild!.channels.cache.filter((value) => value.name === "verification").size == 0) {
+    if (msg.guild!.channels.cache.has(sp.cmd_channel!)) { // safe to assert cmd_channel as not null, since Map.has(null) will always return false
       let createdChannel = await msg.guild!.channels.create('Verification', {
         topic: "",
         nsfw: false,
@@ -252,10 +252,12 @@ client.on("message", async (msg: Message) => {
             id: roleManager.everyone,
             allow: new Permissions(['VIEW_CHANNEL', 'SEND_MESSAGES'])
           },
-          {
-            id: spUpdated.role_id!, // can't be null as role_id was *just* created & assigned in the previous step
-            deny: new Permissions(['VIEW_CHANNEL'])
-          }
+          (await msg.guild!.roles.fetch()).cache.has(spUpdated.role_id!)
+            ? {
+              id: spUpdated.role_id!,
+              deny: new Permissions(['VIEW_CHANNEL'])
+            }
+            : { id: roleManager.everyone } // do nothing if the role wasnt created in the previous step due to *some* error
         ],
         reason: `Channel created by Praetorian after setup command by ${msg.author.username}`
       });
@@ -269,8 +271,8 @@ client.on("message", async (msg: Message) => {
       msg.channel.send(`Created and Updated \`#verification\` channel`);
     } else {
       msg.channel.send(errorMessage([{
-        name: "❌ CHANNEL WITH NAME EXISTS",
-        value: "A channel named verification already exists. To fix this run this command again after deleting the channel named verification"
+        name: "❌ PREVIOUSLY CREATED CHANNEL EXISTS",
+        value: "A verification channel previously created by Praetorian still exists. To fix this run this command again after deleting that channel"
       }]));
     };
   }
