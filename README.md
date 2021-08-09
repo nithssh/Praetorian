@@ -1,7 +1,7 @@
 # Praetorian
-A bot for email-verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.
+Build exclusive communities with this bot for email-verifying new server members, before giving them access to the server. The email has to belong to a set of specific configurable domains.
 
-It was made to be used by communities like college gaming discord servers / esports teams, etc. but can obviously can be used.
+It was made to be used by communities like college gaming discord servers / esports teams, etc. but can obviously can be used for other purposes.
 
 ## Invite
 Invite link *with* admin permission [here](https://discord.com/api/oauth2/authorize?client_id=835201049701646336&permissions=8&scope=bot), is recommended for the best experience.
