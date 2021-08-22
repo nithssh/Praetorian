@@ -5,21 +5,24 @@ import { ServerPreferencesCacher } from "./lib/caching";
 import { GetSessionCodeResult } from "./lib/database";
 import { domainList, errorMessage, fullHelpMessage, introMessage, miniHelpMessage } from "./lib/embeds";
 import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
+import { Logger, LogLevel } from './lib/logging'
 
 dotenv.config();
+
+const client = new Client();
+const spmgr = new ServerPreferencesCacher();
+const logger = new Logger();
+
 // The variables will return undefined if the value is an empty string too.
 // Note: we don't check the validity of the variable values.
 // hence we catch errors related to using invalid env variable values at reespective scopes.
 if (!process.env.BOT_TOKEN || !process.env.EMAIL_ID || !process.env.EMAIL_PWD) {
-  console.error("The .env file has not been setup. Check the README for more info. Exiting application now...");
+  logger.log("The .env file has not been setup. Check the README for more info. Exiting application now...", LogLevel.Error, true);
   process.exit(2);
 }
 
-const client = new Client();
-const spmgr = new ServerPreferencesCacher();
-
 client.on("ready", () => {
-  console.log(`Logged in as ${client!.user!.tag}!`);
+  logger.log(`Logged in as ${client!.user!.tag}!`, LogLevel.Log, true);
 });
 
 // Note: https://stackoverflow.com/a/64632815/8189464
@@ -50,12 +53,12 @@ client.on('guildCreate', (guild) => {
     try {
       guild!.systemChannel.send(introMessage());
     } catch (err) {
-      console.error(`Unable to send message in server's system channel. ${err}`)
+      logger.log(`Unable to send message in server's system channel. ${err}`, LogLevel.Error)
     }
   } else {
-    console.error("No system channel present in the server to send intro message in.")
+    logger.log("No system channel present in the server to send intro message in.", LogLevel.Info)
   }
-  console.log(`Joined new server [${guild.id}: ${guild.name}]. Generated ServerPreferences successfully.`);
+  logger.log(`Joined new server [${guild.id}: ${guild.name}]. Generated ServerPreferences successfully.`, LogLevel.Info);
 });
 
 /*  Commands:
@@ -231,7 +234,7 @@ client.on("message", async (msg: Message) => {
         });
         msg.channel.send(`Created \`Verified\` role`)
       } catch (err) {
-        console.error("Couldn't create verified role");
+        logger.log("Couldn't create verified role", LogLevel.Error);
       }
     } else {
       msg.channel.send(errorMessage([{
@@ -369,7 +372,7 @@ client.on("message", async (msg: Message) => {
               );
             }
           } else {
-            console.log("Didn't update channel overrides as sp.role_id was null")
+            logger.log("Didn't update part of the channel overrides as sp.role_id was null", LogLevel.Warning);
           }
         }
       }
@@ -436,6 +439,6 @@ client.on("message", async (msg: Message) => {
 try {
   client.login(process.env.BOT_TOKEN);
 } catch (err) {
-  console.error("Invalid BOT_TOKEN env variable. Please check it before relaunching the bot.", err);
+  logger.log("Invalid BOT_TOKEN env variable. Please check it before relaunching the bot.", LogLevel.Error, true);
   process.exit(2);
 }
