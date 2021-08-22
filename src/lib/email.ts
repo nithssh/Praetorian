@@ -29,6 +29,7 @@ export async function sendMail(toMail: string, code: number | string): Promise<b
         console.log(error.message);
         if (error.message.includes("Invalid login")) {
           console.error(`Configuration Error: .env file has invalid email credentials. Please check them before restarting the bot.`);
+          reject();
         }
         resolve(false);
       }

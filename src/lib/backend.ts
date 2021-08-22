@@ -16,7 +16,13 @@ export async function startVerificationProcess(email: string, discord_id: string
   let status = await db.setSessionInfo(session);
 
   if (status == SetSessionInfoResult.SuccessfullyCreated || status == SetSessionInfoResult.SuccessfullyUpdated) {
-    let emailSuccess = await sendMail(session.email, session.verification_code);
+    let emailSuccess;
+    try {
+      emailSuccess = await sendMail(session.email, session.verification_code);
+    } catch (err) {
+      await db.deleteSessionInfo(email, server_id);
+      return StartVerificationResult.InvalidEmailerLogin;
+    }
     if (emailSuccess) {
       return status as unknown as StartVerificationResult;
     } else {
@@ -110,5 +116,6 @@ export enum StartVerificationResult {
   SuccessfullyCreated,
   SessionAlreadyActive,
   SuccessfullyUpdated,
-  ActionFailed
+  ActionFailed,
+  InvalidEmailerLogin
 }

@@ -39,26 +39,33 @@ client.on('guildMemberAdd', (guildMember) => {
     if (textChannel) {
       textChannel.send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
       Use the command \`${sp.prefix}help\` to get more info.`);
+      logger.log(`Sent welcome message to (${guildMember.id})`, LogLevel.Info, false, sp);
     }
   }, 1000);
 })
 
-client.on('guildMemberRemove', (guildMember) => {
+client.on('guildMemberRemove', async (guildMember) => {
   deleteVerifiedUser(guildMember.id, guildMember.guild.id);
+  logger.log(`Removed user (${guildMember.id}) from server's verified users table`, LogLevel.Info, false, await spmgr.getServerPreferences(guildMember.guild.id))
 })
 
 client.on('guildCreate', async (guild) => {
-  createServerPreferences(guild.id.toString());
-  if (guild.systemChannel) {
-    try {
-      guild!.systemChannel.send(introMessage());
-    } catch (err) {
-      logger.log(`Unable to send message in server's system channel. ${err}`, LogLevel.Error, false, await spmgr.getServerPreferences(guild.id))
+  let sp = await spmgr.getServerPreferences(guild.id);
+  try {
+    createServerPreferences(guild.id.toString());
+    if (guild.systemChannel) {
+      try {
+        guild!.systemChannel.send(introMessage());
+      } catch (err) {
+        logger.log(`Unable to send message in server's system channel. ${err}`, LogLevel.Error, false, sp)
+      }
+    } else {
+      logger.log("No system channel present in the server to send intro message in.", LogLevel.Info, false, sp)
     }
-  } else {
-    logger.log("No system channel present in the server to send intro message in.", LogLevel.Info, false, await spmgr.getServerPreferences(guild.id))
+    logger.log(`Joined new server (${guild.name}). Generated ServerPreferences successfully.`, LogLevel.Info, false, sp);
+  } catch (err) {
+    logger.log(`Joined new server (${guild.name}). Error generating ServerPreferences.`, LogLevel.Error, false, sp);
   }
-  logger.log(`Joined new server (${guild.name}). Generated ServerPreferences successfully.`, LogLevel.Info, false, await spmgr.getServerPreferences(guild.id));
 });
 
 /*  Commands:
@@ -122,22 +129,30 @@ client.on("message", async (msg: Message) => {
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
+      logger.log(`Rejeced invalid verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
-
+    logger.log(`Started evaluating verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
     let status = await startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id.toString());
     if (status === StartVerificationResult.EmailAlreadyTaken) {
       msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
     } else if (status === StartVerificationResult.SessionAlreadyActive) {
       msg.reply(`Verification code already requested within the last 15 mins. Check your email for the code, or try again later.`);
+      logger.log(`(${msg.author.id}) already has an active session, email not sent.`, LogLevel.Info, false, sp);
     } else if (status === StartVerificationResult.SuccessfullyCreated) {
       msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
+      logger.log(`Verification email sent to (${msg.author.id}).`, LogLevel.Info, false, sp);
     } else if (status === StartVerificationResult.SuccessfullyUpdated) {
       msg.reply(`Verification re-requested successfully. Check your email for the code.`);
+      logger.log(`Verification email re-sent to (${msg.author.id}).`, LogLevel.Info, false, sp);
     } else if (status === StartVerificationResult.ServerMemberAlreadyVerified) {
       msg.reply(`You are already verified in this server.`)
     } else if (status == StartVerificationResult.ActionFailed) {
       msg.reply(`An error occured trying to send the verification email. Please try again later.`);
+      logger.log(`An error occured trying to send the verification email to (${msg.author.id}). ActionFailed, not InvalidEmailerLogin.`, LogLevel.Error, false, sp);
+    } else if (status == StartVerificationResult.InvalidEmailerLogin) {
+      msg.reply(`An error occured trying to send the verification email. Please try again later.`)
+      logger.log(`Error occured trying to send email. Terminating program...`, LogLevel.Error, true, sp);
       process.exit(2); // terminate the program since it is misconfigured and can't work properly
     }
   }
@@ -165,6 +180,7 @@ client.on("message", async (msg: Message) => {
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
+      logger.log(`Rejeced invalid code command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
@@ -175,14 +191,17 @@ client.on("message", async (msg: Message) => {
         if (!msg.guild!.roles.cache.has(sp.role_id)) return;
         msg.guild!.member(msg.author.id)!.roles.add(sp.role_id);
         msg.reply(`✅ Successfully verified! Welcome to ${msg.guild!.name}!`);
+        logger.log(`Successfully verified (${msg.author.id}).`, LogLevel.Info, false, sp);
       } else {
         msg.reply("❌ Entered code is invalid, please try again.");
+        logger.log(`Rejected code from (${msg.author.id}).`, LogLevel.Info, false, sp);
       }
     } else if (status in GetSessionCodeResult) {
       if (status === GetSessionCodeResult.NoActiveSession) {
         msg.reply("No active verification request. Use the `verify` command to start one.");
       } else if (status === GetSessionCodeResult.LastSessionExpired) {
         msg.reply("Your last request has expired. Use the `verify` command again to try again.");
+        logger.log(`Verification session expired for (${msg.author.id}).`, LogLevel.Info, false, sp);
       }
     }
   }
@@ -203,6 +222,7 @@ client.on("message", async (msg: Message) => {
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
+      logger.log(`Rejeced invalid setup command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
@@ -210,6 +230,7 @@ client.on("message", async (msg: Message) => {
     let roleManager = await msg.guild!.roles.fetch();
     await roleManager.everyone.setPermissions([]).then(() => {
       msg.channel.send(`Modified \`everyone\` role's permissions`)
+      logger.log(`Modified @everyone role's permissions`, LogLevel.Info, false, sp);
     });
 
     // create the verified role
@@ -233,6 +254,7 @@ client.on("message", async (msg: Message) => {
           role_id: role.id.toString(),
         });
         msg.channel.send(`Created \`Verified\` role`)
+        logger.log(`Created Verified role`, LogLevel.Info, false, sp);
       } catch (err) {
         logger.log("Couldn't create verified role", LogLevel.Error, false, sp);
       }
@@ -241,6 +263,7 @@ client.on("message", async (msg: Message) => {
         name: "ℹ VERIFIED ROLE ALREADY EXISTS",
         value: "Verified role wasn't created as one previously created already exists."
       }]));
+      logger.log("Verified role wasn't created as one previously created already exists", LogLevel.Info, false, sp);
     }
 
     // create the verification channel
@@ -272,11 +295,13 @@ client.on("message", async (msg: Message) => {
         "role_id": spUpdated.role_id
       });
       msg.channel.send(`Created and Updated \`#verification\` channel`);
+      logger.log("Created and Updated #verification channel", LogLevel.Info, false, sp);
     } else {
       msg.channel.send(errorMessage([{
         name: "❌ PREVIOUSLY CREATED CHANNEL EXISTS",
         value: "A verification channel previously created by Praetorian still exists. To fix this run this command again after deleting that channel"
       }]));
+      logger.log("PREVIOUSLY CREATED CHANNEL EXISTS", LogLevel.Warning, false, sp);
     };
   }
 
@@ -296,6 +321,7 @@ client.on("message", async (msg: Message) => {
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
+      logger.log(`Rejeced invalid configure command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
@@ -415,6 +441,7 @@ client.on("message", async (msg: Message) => {
       }
       if (issues.length !== 0) {
         msg.reply(errorMessage(issues));
+        logger.log(`Rejeced invalid autoverifyall command from (${msg.author.id}).`, LogLevel.Info, false, sp);
         return;
       }
 
@@ -431,6 +458,7 @@ client.on("message", async (msg: Message) => {
       });
       msg.react("✅");
       msg.reply("Successfully completed `autoverifyall` command.");
+      logger.log(`Successfully completed autoverifyall command (${msg.author.id}).`, LogLevel.Info, false, sp);
     }
   }
 
