@@ -28,7 +28,7 @@ export class Logger {
 
   async log(message: string, level: LogLevel = LogLevel.Log, logToConsole: boolean = false): Promise<void | NodeJS.ErrnoException> {
     return new Promise((resolve, reject) => {
-      fs.appendFile(this.file, `[${this.date.toISOString()}] [${LogLevel[level]}] [*module* or *namespace*] ${message}\n`, (err) => {
+      fs.appendFile(this.file, `[${this.date.toISOString()}] [${LogLevel[level]}] ${message}\n`, (err) => {
         if (err) {
           reject(err);
         } else {
@@ -36,9 +36,9 @@ export class Logger {
         }
       });
       if (level == LogLevel.Error && logToConsole) {
-        console.error(`[${this.date.toISOString()}] [${LogLevel[level]}] [*module* or *namespace*] ${message}`);
+        console.error(`[${this.date.toISOString()}] [${LogLevel[level]}] ${message}`);
       } else if (logToConsole) {
-        console.log(`[${this.date.toISOString()}] [${LogLevel[level]}] [*module* or *namespace*] ${message}`)
+        console.log(`[${this.date.toISOString()}] [${LogLevel[level]}] ${message}`)
       }
     });
   }
