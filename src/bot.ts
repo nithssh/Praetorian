@@ -47,18 +47,18 @@ client.on('guildMemberRemove', (guildMember) => {
   deleteVerifiedUser(guildMember.id, guildMember.guild.id);
 })
 
-client.on('guildCreate', (guild) => {
+client.on('guildCreate', async (guild) => {
   createServerPreferences(guild.id.toString());
   if (guild.systemChannel) {
     try {
       guild!.systemChannel.send(introMessage());
     } catch (err) {
-      logger.log(`Unable to send message in server's system channel. ${err}`, LogLevel.Error)
+      logger.log(`Unable to send message in server's system channel. ${err}`, LogLevel.Error, false, await spmgr.getServerPreferences(guild.id))
     }
   } else {
-    logger.log("No system channel present in the server to send intro message in.", LogLevel.Info)
+    logger.log("No system channel present in the server to send intro message in.", LogLevel.Info, false, await spmgr.getServerPreferences(guild.id))
   }
-  logger.log(`Joined new server [${guild.id}: ${guild.name}]. Generated ServerPreferences successfully.`, LogLevel.Info);
+  logger.log(`Joined new server (${guild.name}). Generated ServerPreferences successfully.`, LogLevel.Info, false, await spmgr.getServerPreferences(guild.id));
 });
 
 /*  Commands:
@@ -234,7 +234,7 @@ client.on("message", async (msg: Message) => {
         });
         msg.channel.send(`Created \`Verified\` role`)
       } catch (err) {
-        logger.log("Couldn't create verified role", LogLevel.Error);
+        logger.log("Couldn't create verified role", LogLevel.Error, false, sp);
       }
     } else {
       msg.channel.send(errorMessage([{
@@ -372,7 +372,7 @@ client.on("message", async (msg: Message) => {
               );
             }
           } else {
-            logger.log("Didn't update part of the channel overrides as sp.role_id was null", LogLevel.Warning);
+            logger.log("Didn't update part of the channel overrides as sp.role_id was null", LogLevel.Warning, false, sp);
           }
         }
       }

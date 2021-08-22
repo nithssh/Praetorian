@@ -1,4 +1,5 @@
 import * as fs from 'fs'
+import { ServerPreferences } from './datamodels';
 
 export class Logger {
   file!: number;
@@ -26,9 +27,15 @@ export class Logger {
     });
   }
 
-  async log(message: string, level: LogLevel = LogLevel.Log, logToConsole: boolean = false): Promise<void | NodeJS.ErrnoException> {
+  async log(message: string, level: LogLevel = LogLevel.Log, logToConsole: boolean = false, sp: ServerPreferences | undefined = undefined): Promise<void | NodeJS.ErrnoException> {
     return new Promise((resolve, reject) => {
-      fs.appendFile(this.file, `[${this.date.toISOString()}] [${LogLevel[level]}] ${message}\n`, (err) => {
+      let logMessage;
+      if (sp) {
+        logMessage = `[${this.date.toISOString()}] [${LogLevel[level]}] [${sp.server_id}] ${message}`;
+      } else {
+        logMessage = `[${this.date.toISOString()}] [${LogLevel[level]}] ${message}`;
+      }
+      fs.appendFile(this.file, `${logMessage}\n`, (err) => {
         if (err) {
           reject(err);
         } else {
@@ -36,9 +43,9 @@ export class Logger {
         }
       });
       if (level == LogLevel.Error && logToConsole) {
-        console.error(`[${this.date.toISOString()}] [${LogLevel[level]}] ${message}`);
+        console.error(logMessage);
       } else if (logToConsole) {
-        console.log(`[${this.date.toISOString()}] [${LogLevel[level]}] ${message}`)
+        console.log(logMessage);
       }
     });
   }
