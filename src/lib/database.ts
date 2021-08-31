@@ -230,11 +230,3 @@ export enum SetSessionInfoResult {
   SessionAlreadyActive,
   SuccessfullyUpdated
 }
-
-// export enum StartVerificationReturn {
-//   SuccessfullyCreated,
-//   SuccessfullyUpdated,
-//   SessionAlreadyActive,
-//   EmailAlreadyTaken,
-//   ServerMemberAlreadyVerified,
-// }

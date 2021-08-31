@@ -49,6 +49,13 @@ client.on('guildMemberRemove', async (guildMember) => {
   logger.log(`Removed user (${guildMember.id}) from server's verified users table`, LogLevel.Info, false, await spmgr.getServerPreferences(guildMember.guild.id))
 })
 
+/**
+ * guildDelete handler is not needed as the potential problem where kicking the bot
+ * out of a setup server, deleting the verified role, and re-adding the bot will
+ * make it so that the members that were previously verified can't verify again,
+ * is fixed by using the autoverifyall command. It might be too risky to delete the VerifiedUsers
+ * info as it might not be possible to ask all the members to re-verify.
+ */
 client.on('guildCreate', async (guild) => {
   let sp = await spmgr.getServerPreferences(guild.id);
   try {
@@ -98,6 +105,16 @@ client.on("message", async (msg: Message) => {
         }
       }
     }
+  }
+
+  // check for basic permissions
+  if (msg.guild!.me?.permissions.has('SEND_MESSAGES')) {
+    logger.log(`Aborting command as server didn't provide SEND_MESSAGE permission`, LogLevel.Info, false, sp);
+    return;
+  }
+  if (msg.guild!.me?.permissions.has('EMBED_LINKS')) {
+    logger.log(`Aborting command as server didn't provide EMBED_LINKS permission`, LogLevel.Info, false, sp);
+    return;
   }
 
   if (msg.content.startsWith(`${prefix}help`)) {
@@ -171,11 +188,23 @@ client.on("message", async (msg: Message) => {
         value: "The bot needs to have `Manage Roles` permission to execute this command"
       });
     }
+    if (!msg!.guild!.roles.cache.has(sp.role_id!) || !sp.role_id) { // safe to assert not-null since Map.has(null) is always false
+      issues.push({
+        name: "❌ VERIFIED ROLE DOESN'T EXIST",
+        value: "The bot hasn't set up the Verified role that needs to be assigned. An Admin needs to call the !setup command."
+      });
+    }
     if (msg!.guild!.member(msg.author.id)!.roles.highest.position > msg!.guild!.me!.roles.highest.position) {
       issues.push({
         name: "❌ PRAETORIAN ROLE POSITION",
         value: `Praetorian has lower roles than the command user, and hence can't assign role to the user. 
                 Fix this by moving praetorian role to a higher position in the server's roles list`
+      });
+    }
+    if (msg!.guild!.roles.cache.get(sp.role_id!)?.position! > msg!.guild!.me!.roles.highest.position) {
+      issues.push({
+        name: "❌ VERIFIED ROLE POSITION",
+        value: `The Verified role is higher up in the list than the bot's highest role. Fix this my lowering the Verified role to be under the Praetorian role.`
       });
     }
     if (issues.length !== 0) {
@@ -456,7 +485,7 @@ client.on("message", async (msg: Message) => {
           }]));
         }
       });
-      msg.react("✅");
+      // msg.react("✅");
       msg.reply("Successfully completed `autoverifyall` command.");
       logger.log(`Successfully completed autoverifyall command (${msg.author.id}).`, LogLevel.Info, false, sp);
     }
