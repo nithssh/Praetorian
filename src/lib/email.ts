@@ -2,7 +2,8 @@ import { createTransport } from 'nodemailer';
 
 /** Sends a verification email to the given email address
  * 
- * @returns whether the email was sent successfully or not
+ * @returns resolves true or false based on whether mail was sent successfully
+ *          rejects undefined when there is a fatal configuration error. Program must be terminated in this case.
 */
 export async function sendMail(toMail: string, code: number | string): Promise<boolean> {
   let fromMail = process.env.EMAIL_ID;

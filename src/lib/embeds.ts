@@ -17,13 +17,18 @@ export function fullHelpMessage(prefix: string) {
       },
       {
         name: "Admin Commands", value: `
-        \`${prefix}setup\` — Set up this server for the bot to work. Creates a verified role, removes all permissions from the everyone role, and creates a verification channel.\n
+        \`${prefix}setup\` — Set up this server for the bot to work. \
+        Creates a verified role, removes all permissions from the everyone role, \
+        and creates a verification channel.\
+        Can also be used to fix server configuration is some cases.\n
         \`${prefix}configure domain get\` — List the domains in the domain filter.\n
         \`${prefix}configure domain add example.com\` — Add the specified domain to the domain filter.\n
         \`${prefix}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
         \`${prefix}configure prefix !\` — Set the bot's command prefix symbol.\n
-        \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
-        \`${prefix}configure autoverifyall !\` — Add the verified role to all the current server member. This option is for pre-existing communities, that want to switch over to this bot for auto verification.\n
+        \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. \
+        Automatically set by the \`setup\` command.\n
+        \`${prefix}configure autoverifyall\` — Add the verified role to all the current server member. \
+        This option is for pre-existing communities, that want to switch over to this bot for verification.\n
       `})
     .setFooter('Version 1.0.0-beta', img);
 }
@@ -49,7 +54,7 @@ export function errorMessage(issues: EmbedFieldData[]) {
     .setAuthor('Error executing command', img)
     .setColor('#cccccc')
     .setTitle('Encountered the following issues:')
-    // .setDescription("Fix the following issues preventing autoverifyall command from working.")
+    // .setDescription("Fix the following issues preventing the {} command from working.")
     .addFields(issues);
 }
 
@@ -78,7 +83,7 @@ export function introMessage() {
       {
         name: "1️⃣ Use the \`!setup\` command",
         value: `This will create a 'Verified' role and tranfer the basic permission from everyone to this role instead.
-        It will also create a verification channel, which is the only place the bot will respond to regular commands to reduce spam.`
+        It will also create a verification channel, which is the only place the bot will respond to user commands to reduce spam.`
       },
       {
         name: "2️⃣ Use the \`!help\` command in the verification channel",
