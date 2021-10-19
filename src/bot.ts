@@ -75,19 +75,7 @@ client.on('guildCreate', async (guild) => {
   }
 });
 
-// / COMMAND STRUCTURE
-// ├── help
-// ├── verify
-// ├── code
-// ├── setup
-// └── configure
-//     ├── prefix
-//     ├── domain
-//     │   ├── get
-//     │   ├── add
-//     │   └── remove
-//     ├── setCmdChannel
-//     └── autoVerifyAll
+// Check README for commands
 // Maybe commands to blacklist specific email ids?
 client.on("message", async (msg: Message) => {
   if (msg.author.bot) return;
@@ -115,11 +103,11 @@ client.on("message", async (msg: Message) => {
   }
 
   // check for basic permissions
-  if (msg.guild!.me?.permissions.has('SEND_MESSAGES')) {
+  if (!msg.guild!.me?.permissions.has('SEND_MESSAGES')) {
     logger.log(`Aborting command as server didn't provide SEND_MESSAGE permission`, LogLevel.Info, false, sp);
     return;
   }
-  if (msg.guild!.me?.permissions.has('EMBED_LINKS')) {
+  if (!msg.guild!.me?.permissions.has('EMBED_LINKS')) {
     logger.log(`Aborting command as server didn't provide EMBED_LINKS permission`, LogLevel.Info, false, sp);
     return;
   }
