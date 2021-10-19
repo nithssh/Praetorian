@@ -75,13 +75,20 @@ client.on('guildCreate', async (guild) => {
   }
 });
 
-/*  Commands:
- *    !help -- prints a help message
- *    !verify <email> -- starts verification for the specified email id
- *    !code <code> -- validates the provided code
- *    !setup
- *    !configure <prefix/domain/setcmdchannel> <*newPrefix* / *newDomain* />
- */
+// / COMMAND STRUCTURE
+// ├── help
+// ├── verify
+// ├── code
+// ├── setup
+// └── configure
+//     ├── prefix
+//     ├── domain
+//     │   ├── get
+//     │   ├── add
+//     │   └── remove
+//     ├── setCmdChannel
+//     └── autoVerifyAll
+// Maybe commands to blacklist specific email ids?
 client.on("message", async (msg: Message) => {
   if (msg.author.bot) return;
   if (typeof msg.channel == typeof DMChannel) return;
