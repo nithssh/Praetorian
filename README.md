@@ -4,9 +4,10 @@ Build exclusive communities with this bot for email-verifying new server members
 It was made to be used by communities like college gaming clubs / esports teams, etc. but can obviously be used for other purposes.
 
 ## Invite
+
 Invite link *with* admin permission [here](https://discord.com/api/oauth2/authorize?client_id=835201049701646336&permissions=8&scope=bot).
 
-Admin permission is required for the `setup`, and `configure autoverifyall` commands only, but because of the way role heirarcy works, the bot.
+Admin permission is required for the `setup`, and `configure autoverifyall` commands only, but because of the way role heirarcy works, the bot works most reliably when given admin.
 
 ## Commands
 `verify`, `code`, `help`, `setup`, `configure`
