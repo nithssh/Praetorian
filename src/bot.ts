@@ -75,13 +75,8 @@ client.on('guildCreate', async (guild) => {
   }
 });
 
-/*  Commands:
- *    !help -- prints a help message
- *    !verify <email> -- starts verification for the specified email id
- *    !code <code> -- validates the provided code
- *    !setup
- *    !configure <prefix/domain/setcmdchannel> <*newPrefix* / *newDomain* />
- */
+// Check README for commands
+// Maybe commands to blacklist specific email ids?
 client.on("message", async (msg: Message) => {
   if (msg.author.bot) return;
   if (typeof msg.channel == typeof DMChannel) return;
@@ -95,7 +90,7 @@ client.on("message", async (msg: Message) => {
    * The message will be evaulated if:-
    *   - it is !setup command
    *   - it is !configure setcmdchannel command
-   *   - msg is in sp.cmd_channel (where sp.cmd_channel)
+   *   - msg is in sp.cmd_channel (or cmd_channel is not setup)
    */
   if (msg.content !== `${prefix}setup`) {
     if (!isSetChannelCommand(msg)) {
@@ -108,11 +103,11 @@ client.on("message", async (msg: Message) => {
   }
 
   // check for basic permissions
-  if (msg.guild!.me?.permissions.has('SEND_MESSAGES')) {
+  if (!msg.guild!.me?.permissions.has('SEND_MESSAGES')) {
     logger.log(`Aborting command as server didn't provide SEND_MESSAGE permission`, LogLevel.Info, false, sp);
     return;
   }
-  if (msg.guild!.me?.permissions.has('EMBED_LINKS')) {
+  if (!msg.guild!.me?.permissions.has('EMBED_LINKS')) {
     logger.log(`Aborting command as server didn't provide EMBED_LINKS permission`, LogLevel.Info, false, sp);
     return;
   }
@@ -297,7 +292,7 @@ client.on("message", async (msg: Message) => {
 
     // create the verification channel
     let spUpdated = await spmgr.getServerPreferences(msg.guild!.id);
-    if (msg.guild!.channels.cache.has(sp.cmd_channel!)) { // safe to assert cmd_channel as not null, since Map.has(null) will always return false
+    if (!msg.guild!.channels.cache.has(sp.cmd_channel!)) { // safe to assert cmd_channel as not null, since Map.has(null) will always return false
       let createdChannel = await msg.guild!.channels.create('Verification', {
         topic: "",
         nsfw: false,

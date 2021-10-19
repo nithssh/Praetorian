@@ -1,7 +1,6 @@
 /* Cache is an object of objects
  * Could be replaced with an in-memory sqlite3 database, but this
  * is suffiecient for current scale.
- * Might be worth switching to class instances over arbitrary objects
 */
 
 import { queryServerPreferences, setServerPreferences, createServerPreferences } from "./backend";
@@ -58,7 +57,7 @@ export class ServerPreferencesCacher {
       "role_id": sp.role_id
     };
     // this.cache[sp.server_id] = sp;
-    setServerPreferences(sp);
+    setServerPreferences(sp); // this is not recurrsing, its calling the DB function
   }
 
   async isCmdChannelSetup(server_id: string): Promise<boolean> {
