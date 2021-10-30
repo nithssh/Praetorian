@@ -13,7 +13,7 @@
     "sqlite3": "^4.2.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node ./node_modules/mocha/bin/mocha -r ts-node/register -r 'tests/fixtures.ts' 'tests/**/*.ts'",
     "start": "tsc --build tsconfig.json && node ./dist/bot.js"
   },
   "repository": {
@@ -23,9 +23,12 @@
   "author": "dem1se",
   "license": "MPL-2.0",
   "devDependencies": {
+    "@types/mocha": "^9.0.0",
     "@types/node": "^16.11.1",
     "@types/nodemailer": "^6.4.4",
     "@types/sqlite3": "^3.1.7",
-    "typescript": "^4.3.5"
+    "mocha": "^9.1.3",
+    "ts-node": "^10.4.0",
+    "typescript": "^4.4.4"
   }
 }

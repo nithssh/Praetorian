@@ -3,13 +3,12 @@ import { ServerPreferences, SessionInfo, VerifiedProfile } from "./datamodels";
 
 export class DB {
   db: Database;
-  constructor() {
-    this.db = new Database("./database.db", (err) => {
-
+  constructor(filename: string = './database.db') {
+    this.db = new Database(filename, (err) => {
       if (err) {
         console.error(err.message);
       } else {
-        console.log("Connected to Database.");
+        // console.log("Connected to Database.");
         this.db.run(`CREATE TABLE IF NOT EXISTS ActiveVeriTable (
           email TEXT NOT NULL,
           discord_id TEXT NOT NULL,
@@ -39,7 +38,7 @@ export class DB {
     });
   }
 
-  private async get(sql: string, params: Array<string|null>): Promise<any> {
+  async get(sql: string, params: Array<string|null>): Promise<any> {
     const that = this.db;
     return new Promise(function (resolve, reject) {
       that.all(sql, params, function (error, rows) {
@@ -134,7 +133,7 @@ export class DB {
     if (row === undefined) {
       return GetSessionCodeResult.NoActiveSession;
     } else {
-      if (row.timestamp - new Date().getTime() > 900000) {
+      if (new Date().getTime() - row.timestamp > 900000) {
         return GetSessionCodeResult.LastSessionExpired;
       } else {
         return row.code;
@@ -170,12 +169,12 @@ export class DB {
   async deleteVerifiedUser(VerifiedEmail: VerifiedProfile) {
     await this.get(
       `DELETE FROM VerifiedTable
-       WHERE server_id=? AND discord_id=?`,
+       WHERE server_id=? AND (discord_id=? OR email=?)`,
       [
         VerifiedEmail.server_id,
-        VerifiedEmail.discord_id
+        VerifiedEmail.discord_id,
+        VerifiedEmail.email
       ]);
-    Promise.resolve();
   }
 
   async getServerPreferences(server_id: string): Promise<any> {
