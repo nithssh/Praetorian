@@ -14,7 +14,7 @@
   },
   "scripts": {
     "test": "node ./node_modules/mocha/bin/mocha -r ts-node/register -r 'tests/_fixtures.ts' 'tests/**/*.ts'",
-    "start": "tsc --build tsconfig.json && node ./dist/bot.js"
+    "start": "node ./node_modules/typescript/bin/tsc --build tsconfig.json && node ./dist/bot.js"
   },
   "repository": {
     "type": "git",

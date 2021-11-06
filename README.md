@@ -12,8 +12,7 @@ Admin permission is required for the `setup`, and `configure autoverifyall` comm
 ## Commands
 `verify`, `code`, `help`, `setup`, `configure`
 
-The default prefix is `!`.
-Use the `help` command to get an up-to-date explaination on these commands.
+The default prefix is `!`. Use the `help` command to get an up-to-date explaination of these commands.
 
 ```
 / COMMAND STRUCTURE
@@ -32,18 +31,31 @@ Use the `help` command to get an up-to-date explaination on these commands.
 ```
 
 ## Deployment
-Clone the repo, setup the .env file, and run the following commands:-
+### Docker
+Pull this image from Docker Hub, and run it using these commands. Fill in the quotes with your credentials.
+```
+docker pull dem1se/praetorian
+docker run -e BOT_TOKEN=" " -e EMAIL_ID=" " -e EMAIL_PWD=" " dem1se/praetorian
+```
+
+### Bare Node.js application
+Clone the repo, [setup the .env file](#.env-file), and run the following commands:-
 
 ```
 npm install
 npm start
 ```
-Note: `npm i` might have to be run with elevated privileges on linux, for the sqlite3 package's build steps.
+Note: `npm install` might have to be run with elevated privileges on linux, for the sqlite3 package's build steps.
 
-### `.env` File
-The .env file at the root of the project needs to have the following variables.
+#### .env File
+The .env file at the root of the project needs to have the following variables if running as directly as node application.
 ```env
 BOT_TOKEN=""
 EMAIL_ID=""
 EMAIL_PWD=""
 ```
+
+## Some exit codes
+- 0: Everything's good. Take a break!
+- 2: There is an error with the secrets (environmental variables). If using the [Docker image](#docker), make sure you fill in the quotes in the `docker run` command. If running as node application directly, [setup the .env file](#.env-file)
+- 3: Issue with the logger. There was an error creating a latest.log file. Please check file system permissions or other related causes.
