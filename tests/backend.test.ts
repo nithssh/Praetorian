@@ -1,7 +1,7 @@
 import assert from 'assert';
 import * as backend from '../src/lib/backend';
 import * as database from '../src/lib/database';
-import { SessionInfo, VerifiedProfile } from '../src/lib/datamodels';
+import { VerifiedProfile } from '../src/lib/datamodels';
 
 const db = new database.DB();
 

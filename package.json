@@ -13,7 +13,7 @@
     "sqlite3": "^4.2.0"
   },
   "scripts": {
-    "test": "node ./node_modules/mocha/bin/mocha -r ts-node/register -r 'tests/fixtures.ts' 'tests/**/*.ts'",
+    "test": "node ./node_modules/mocha/bin/mocha -r ts-node/register -r 'tests/_fixtures.ts' 'tests/**/*.ts'",
     "start": "tsc --build tsconfig.json && node ./dist/bot.js"
   },
   "repository": {

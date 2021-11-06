@@ -7,11 +7,11 @@ import { queryServerPreferences, setServerPreferences, createServerPreferences }
 import { ServerPreferences } from "./datamodels";
 
 export class ServerPreferencesCacher {
-  cache: { [index: string]: ServerPreferences };
+  private cache: { [index: string]: ServerPreferences };
 
   constructor() {
     this.cache = {};
-    console.log("Caching online");
+    // console.log("Caching online");
   }
 
   async getServerPreferences(server_id: string): Promise<ServerPreferences> {
