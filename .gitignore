@@ -6,7 +6,7 @@ node_modules/
 !settings.json
 
 # typescript output
-dist/*
+dist/
 
 *.env
 *.db
