@@ -4,7 +4,7 @@ export function isValidCodeCommand(message: Message) {
   if (message.content.split(" ").length !== 2) {
     return false;
   }
-  if (!message.content.split(" ")[0].toLowerCase().endsWith("code")) {
+  if (message.content.split(" ")[0].toLowerCase().slice(1) != "code") {
     return false;
   }
   if (+message.content.split(" ")[1] < 100000 || +message.content.split(" ")[1] > 1000000) {
@@ -17,7 +17,7 @@ export function isValidVerifyCommand(message: Message) {
   if (message.content.split(" ").length !== 2) {
     return false;
   }
-  if (!message.content.split(" ")[0].toLowerCase().endsWith("verify")) {
+  if (message.content.split(" ")[0].toLowerCase().slice(1) != "verify") {
     return false;
   }
   if (!isValidEmail(message.content.split(" ")[1])) {

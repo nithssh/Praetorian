@@ -1,0 +1,9 @@
+.vscode/
+docs/
+tests/
+
+# files not in the repo, just in case
+node_modules/
+logs/
+dist/
+*.db

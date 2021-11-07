@@ -16,7 +16,7 @@ export class Logger {
                 this.file = fd;
               } else {
                 console.error(errNew.message);
-                process.exit(2);
+                process.exit(3);
               }
             });
           });
