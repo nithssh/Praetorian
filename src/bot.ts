@@ -37,9 +37,9 @@ client.on('guildMemberAdd', (guildMember) => {
     if (!sp.cmd_channel) return;
     let textChannel = guildMember!.guild!.channels!.resolve(sp.cmd_channel) as TextChannel;
     if (textChannel) {
-      textChannel.send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
-      Use the command \`${sp.prefix}help\` to get more info.`);
-      logger.log(`Sent welcome message to (${guildMember.id})`, LogLevel.Info, false, sp);
+      // textChannel.send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
+      // Use the command \`${sp.prefix}help\` to get more info.`);
+      // logger.log(`Sent welcome message to (${guildMember.id})`, LogLevel.Info, false, sp);
     }
   }, 1000);
 })
