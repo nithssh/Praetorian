@@ -235,7 +235,7 @@ client.on("message", async (msg: Message) => {
     if (!msg.guild!.member(msg.author)!.hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
       issues.push({
         name: "❌ COMMAND USER PERMISSION",
-        value: "Only members with `Manage Server` and `Manager Roles` permissions can use this command."
+        value: "Only members with `Manage Server` and `Manage Roles` permissions can use this command."
       });
     }
     if (!msg.guild!.me!.hasPermission('ADMINISTRATOR')) {
@@ -246,7 +246,7 @@ client.on("message", async (msg: Message) => {
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
-      logger.log(`Rejeced invalid setup command from (${msg.author.id}).`, LogLevel.Info, false, sp);
+      logger.log(`Rejected invalid setup command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
