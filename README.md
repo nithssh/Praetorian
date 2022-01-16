@@ -1,18 +1,31 @@
 # Praetorian
 Build exclusive communities with this bot for email-verifying new server members, before giving them access to the server. The email has to belong to a set of specific configurable domains.
 
-It was made to be used by communities like college gaming clubs / esports teams, etc. but can obviously be used for other purposes.
+Made to be used by communities like college gaming clubs / esports teams, etc. but can obviously be used for other purposes.
 
 ## Invite
 
-Invite link *with* admin permission [here](https://discord.com/api/oauth2/authorize?client_id=835201049701646336&permissions=8&scope=bot).
+Invite link with admin permission [here](https://discord.com/api/oauth2/authorize?client_id=835201049701646336&permissions=8&scope=bot).
 
-Admin permission is required for the `setup`, and `configure autoverifyall` commands only, but because of the way role heirarcy works, the bot works most reliably when given admin.
+Admin permission is only strictly required by the `setup`, and `configure autoverifyall` commands, but because of the way role heirarcy works, the bot works most reliably when given admin and the role is near the top of the list.
+
+Make sure to read the `help` message and run the `setup` command after adding the bot to a server.
+
+Note that the bot will only respond to messages in the verification channel it set up if any, especially once the `setup` command is run. So if the bot is not responding to your commands you might want to make sure you're using the right channel.
+
+
 
 ## Commands
 `verify`, `code`, `help`, `setup`, `configure`
 
 The default prefix is `!`. Use the `help` command to get an up-to-date explaination of these commands.
+
+The bot will process commands any text channel if:
+- It is the `!setup` command
+- It is the `!configure setcmdchannel` command
+- The command channel is not set yet (either through `!setup` or `!configure`)
+
+All the commands in the command channel (named "*Verification*" initially) will be processed.
 
 ```
 / COMMAND STRUCTURE
@@ -30,12 +43,24 @@ The default prefix is `!`. Use the `help` command to get an up-to-date explainat
     └── autoVerifyAll
 ```
 
+These are the planned application commands:
+```
+/verify start
+/verify code
+/setup
+/prefix
+/domain get
+/domain add
+/domain remove
+/autoverifyall
+```
 ## Deployment
 ### Docker
-Pull this image from Docker Hub, and run it using these commands. Fill in the quotes with your credentials.
+~~Pull this image from Docker Hub, and run it using these commands. Fill in the quotes with your credentials.~~
+The Docker image is not maintained anymore, since I didn't have any use for it, and no one has deployed it to be honest XD
 ```
-docker pull dem1se/praetorian
-docker run -e BOT_TOKEN=" " -e EMAIL_ID=" " -e EMAIL_PWD=" " dem1se/praetorian
+# docker pull dem1se/praetorian
+# docker run -e BOT_TOKEN=" " -e EMAIL_ID=" " -e EMAIL_PWD=" " dem1se/praetorian
 ```
 
 ### Bare Node.js application
