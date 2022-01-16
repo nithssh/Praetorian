@@ -1,4 +1,4 @@
-import { Client, DMChannel, EmbedFieldData, Message, Permissions, TextChannel } from "discord.js";
+import { Client, DMChannel, EmbedFieldData, Message, Permissions } from "discord.js";
 import dotenv from 'dotenv';
 import { ValidateCodeResult, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode, StartVerificationResult } from "./lib/backend";
 import { ServerPreferencesCacher } from "./lib/caching";
@@ -25,23 +25,23 @@ client.on("ready", () => {
   logger.log(`Logged in as ${client!.user!.tag}!`, LogLevel.Log, true);
 });
 
-// Note: https://stackoverflow.com/a/64632815/8189464
+// Note: SERVER_MEMEBERS_INTENT needs to be turned on for the bot in the dashboard for this to work
 client.on('guildMemberAdd', (guildMember) => {
   /* Notes:
    * if the guildMemeberRemove deleteVerifiedUser() works properly all the time,
    * we dont have to check to reassign roles to memebers,
    * which would be critical since stored verified users can't start verification again.
   */
-  setTimeout(async () => {
-    let sp = await spmgr.getServerPreferences(guildMember.guild.id);
-    if (!sp.cmd_channel) return;
-    let textChannel = guildMember!.guild!.channels!.resolve(sp.cmd_channel) as TextChannel;
-    if (textChannel) {
-      // textChannel.send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
-      // Use the command \`${sp.prefix}help\` to get more info.`);
-      // logger.log(`Sent welcome message to (${guildMember.id})`, LogLevel.Info, false, sp);
-    }
-  }, 1000);
+  // setTimeout(async () => {
+  //   let sp = await spmgr.getServerPreferences(guildMember.guild.id);
+  //   if (!sp.cmd_channel) return;
+  //   let textChannel = guildMember!.guild!.channels!.resolve(sp.cmd_channel) as TextChannel;
+  //   if (textChannel) {
+  //     textChannel.send(`Hey! you will need to verify your email from belonging to ${sp.domain.replace(" ", " or ")} to gain access tp this sever.
+  //     Use the command \`${sp.prefix}help\` to get more info.`);
+  //     logger.log(`Sent welcome message to (${guildMember.id})`, LogLevel.Info, false, sp);
+  //   }
+  // }, 1000);
 })
 
 client.on('guildMemberRemove', async (guildMember) => {
@@ -87,6 +87,7 @@ client.on("message", async (msg: Message) => {
   const prefix = sp.prefix;
 
   /*
+   * [Also mentioned in README]
    * The message will be evaulated if:-
    *   - it is !setup command
    *   - it is !configure setcmdchannel command
@@ -320,12 +321,15 @@ client.on("message", async (msg: Message) => {
       });
       msg.channel.send(`Created and Updated \`#verification\` channel`);
       logger.log("Created and Updated #verification channel", LogLevel.Info, false, sp);
+      msg.channel.send(`❗ Praetorian won't process commands outside ${createdChannel} to reduce spam, _including_ admin commands.`);
     } else {
       msg.channel.send(errorMessage([{
         name: "❌ PREVIOUSLY CREATED CHANNEL EXISTS",
         value: "A verification channel previously created by Praetorian still exists. To fix this run this command again after deleting that channel"
       }]));
       logger.log("PREVIOUSLY CREATED CHANNEL EXISTS", LogLevel.Warning, false, sp);
+      let cmd_channel = msg.guild?.channels.cache.get(sp.cmd_channel!);
+      msg.channel.send(`❗ Praetorian won't process commands outside #${cmd_channel} to reduce spam, _including_ admin commands.`);
     };
   }
 
