@@ -7,7 +7,7 @@ Made to be used by communities like college gaming clubs / esports teams, etc. b
 
 Invite link with admin permission [here](https://discord.com/api/oauth2/authorize?client_id=835201049701646336&permissions=8&scope=bot).
 
-Admin permission is only strictly required by the `setup`, and `configure autoverifyall` commands, but because of the way role heirarcy works, the bot works most reliably when given admin and the role is near the top of the list.
+Admin permission is only strictly required by the `setup`, and `configure autoverifyall` commands, but because of the way role heirarcy works, the bot works most reliably when given admin and the Praetorian role is near the top of the list.
 
 Make sure to read the `help` message and run the `setup` command after adding the bot to a server.
 
