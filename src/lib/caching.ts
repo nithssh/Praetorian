@@ -29,7 +29,7 @@ export class ServerPreferencesCacher {
         this.cache[server_id] = {
           "server_id": server_id,
           "prefix": createdRow.prefix,
-          "domain": createdRow.domain,
+          "domains": createdRow.domain,
           "cmd_channel": createdRow.cmd_channel,
           "role_id": createdRow.role_id,
         };
@@ -39,7 +39,7 @@ export class ServerPreferencesCacher {
         this.cache[server_id] = {
           "server_id": server_id,
           "prefix": row.prefix,
-          "domain": row.domain,
+          "domains": row.domain,
           "cmd_channel": row.cmd_channel,
           "role_id": row.role_id,
         };
@@ -52,7 +52,7 @@ export class ServerPreferencesCacher {
     this.cache[sp.server_id] = {
       "server_id": sp.server_id,
       "prefix": sp.prefix,
-      "domain": sp.domain,
+      "domains": sp.domains,
       "cmd_channel": sp.cmd_channel,
       "role_id": sp.role_id
     };

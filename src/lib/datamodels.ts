@@ -29,7 +29,7 @@ export class VerifiedProfile {
 }
 
 export interface ServerPreferences {
-  domain: string;
+  domains: string;
   prefix: string;
   cmd_channel: string | null;
   role_id: string | null;

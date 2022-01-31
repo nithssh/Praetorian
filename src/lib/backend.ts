@@ -75,7 +75,7 @@ export async function createServerPreferences(server_id: string): Promise<void> 
   if (serverPreferences == undefined) {
     await db.setSeverPreferences({
       server_id: server_id,
-      domain: "gmail.com",
+      domains: "gmail.com",
       prefix: "!",
       cmd_channel: null,
       role_id: null,
