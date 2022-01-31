@@ -189,7 +189,7 @@ export class DB {
         SET domain=?, prefix=?, cmd_channel=?, role_id=?
         WHERE server_id=?`,
         [
-          ServerPreferences.domain,
+          ServerPreferences.domains,
           ServerPreferences.prefix,
           ServerPreferences.cmd_channel,
           ServerPreferences.role_id,
@@ -202,7 +202,7 @@ export class DB {
         [
           ServerPreferences.server_id,
           ServerPreferences.prefix,
-          ServerPreferences.domain,
+          ServerPreferences.domains,
           ServerPreferences.cmd_channel,
           ServerPreferences.role_id
         ]

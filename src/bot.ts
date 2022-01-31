@@ -132,11 +132,13 @@ client.on("message", async (msg: Message) => {
       });
     }
     if (msg.content.split(" ")[1] !== undefined) {
-      if (!sp.domain.includes(msg.content.split(" ")[1].split("@")[1])) {
+      const userDomain = msg.content.split(" ")[1].split("@")[1];
+      const domains = sp.domains.split(" ");
+      if (domains.filter(x => userDomain.endsWith(x)).length === 0) {
         issues.push({
           name: "❌ WRONG EMAIL ID",
-          value: `The email must be part of the \`${sp.domain.replace(" ", ", ")}\` domains. 
-          Please try again with the right email address [example@${sp.domain.split(" ")[0]}].`
+          value: `The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domains. 
+              Please try again with the right email address [example@${sp.domains.split(" ")[0]}].`
         });
       }
     }
@@ -273,7 +275,7 @@ client.on("message", async (msg: Message) => {
         });
         await spmgr.setServerPreferences({
           server_id: sp.server_id,
-          domain: sp.domain,
+          domains: sp.domains,
           prefix: sp.prefix,
           cmd_channel: sp.cmd_channel,
           role_id: role.id.toString(),
@@ -314,7 +316,7 @@ client.on("message", async (msg: Message) => {
       });
       await spmgr.setServerPreferences({
         "server_id": spUpdated.server_id,
-        "domain": spUpdated.domain,
+        "domains": spUpdated.domains,
         "prefix": spUpdated.prefix,
         "cmd_channel": createdChannel.id,
         "role_id": spUpdated.role_id
@@ -356,7 +358,7 @@ client.on("message", async (msg: Message) => {
     let cmdParts = msg.content.split(" ");
     if (cmdParts[1] === "domain") {
       if (cmdParts[2] == "add") {
-        if (sp.domain.includes(cmdParts[3])) {
+        if (sp.domains.includes(cmdParts[3])) {
           msg.reply(errorMessage([{
             name: "❌ DOMAIN ALREADY IN FILTER",
             value: "The provided domain is already part of the filter."
@@ -365,7 +367,7 @@ client.on("message", async (msg: Message) => {
         } else {
           spmgr.setServerPreferences({
             "server_id": sp.server_id,
-            "domain": `${sp.domain} ${cmdParts[3]}`,
+            "domains": `${sp.domains} ${cmdParts[3]}`,
             "prefix": sp.prefix,
             "cmd_channel": sp.cmd_channel,
             "role_id": sp.role_id
@@ -373,8 +375,8 @@ client.on("message", async (msg: Message) => {
           msg.reply(`Successfully added \`${cmdParts[3]}\` to the domain filter.`);
         }
       } else if (cmdParts[2] == "remove") {
-        if (sp.domain.includes(cmdParts[3])) {
-          if (sp.domain.split(" ").length === 1) {
+        if (sp.domains.includes(cmdParts[3])) {
+          if (sp.domains.split(" ").length === 1) {
             msg.reply(errorMessage([{
               name: "❌ LAST DOMAIN IN FILTER",
               value: "Can't remove the last domain in the filter."
@@ -384,7 +386,7 @@ client.on("message", async (msg: Message) => {
           else {
             spmgr.setServerPreferences({
               "server_id": sp.server_id,
-              "domain": sp.domain.replace(cmdParts[3], "").trim(),
+              "domains": sp.domains.replace(cmdParts[3], "").trim(),
               "prefix": sp.prefix,
               "cmd_channel": sp.cmd_channel,
               "role_id": sp.role_id
@@ -393,12 +395,12 @@ client.on("message", async (msg: Message) => {
           }
         }
       } else if (cmdParts[2] == "get") {
-        msg.reply(domainList(sp.domain.split(" ")));
+        msg.reply(domainList(sp.domains.split(" ")));
       }
     } else if (cmdParts[1] === "prefix") {
       spmgr.setServerPreferences({
         "server_id": sp.server_id,
-        "domain": sp.domain,
+        "domains": sp.domains,
         "prefix": cmdParts[2],
         "cmd_channel": sp.cmd_channel,
         "role_id": sp.role_id
@@ -432,7 +434,7 @@ client.on("message", async (msg: Message) => {
       }
       spmgr.setServerPreferences({
         "server_id": sp.server_id,
-        "domain": sp.domain,
+        "domains": sp.domains,
         "prefix": sp.prefix,
         "cmd_channel": msg.channel.id.toString(),
         "role_id": sp.role_id
