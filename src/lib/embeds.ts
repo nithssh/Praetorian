@@ -2,6 +2,7 @@ import { EmbedFieldData, MessageEmbed } from "discord.js";
 const img = "https://raw.githubusercontent.com/Dem1se/Praetorian/master/docs/avatar.png";
 
 export function fullHelpMessage(prefix: string) {
+  const pf = prefix;
   return new MessageEmbed()
     .setAuthor('Full Help Message', img)
     .setColor('#cccccc')
@@ -11,42 +12,38 @@ export function fullHelpMessage(prefix: string) {
       {
         name: "User Commands",
         value: `
-          \`${prefix}verify user@example.com\` — Start user verification for the specified email id.\n
-          \`${prefix}code 123456\` — Validate the entered verification code.\n
-          \`${prefix}help\` — Print this help message.\n`
+\`${pf}verify user@example.com\` — Start user verification for the specified email id.\n
+\`${pf}code 123456\` — Validate the entered verification code.\n
+\`${pf}help\` — Print this help message.\n`
       },
       {
-        name: "Admin Commands", value: `
-        \`${prefix}setup\` — Set up this server for the bot to work. \
-        Creates a verified role, removes all permissions from the everyone role, \
-        and creates a verification channel.\
-        Can also be used to fix server configuration is some cases.\n
-        \`${prefix}configure domain get\` — List the domains in the domain filter.\n
-        \`${prefix}configure domain add example.com\` — Add the specified domain to the domain filter.\n
-        \`${prefix}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
-        \`${prefix}configure prefix !\` — Set the bot's command prefix symbol.\n
-        \`${prefix}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. \
-        Automatically set by the \`setup\` command.\n
-        \`${prefix}configure autoverifyall\` — Add the verified role to all the current server member. \
-        This option is for pre-existing communities, that want to switch over to this bot for verification.\n
-      `})
-    .setFooter('Version 1.0.0-beta', img);
+        name: "Admin Commands", value:
+          `\`${pf}setup\` — Set up this server for the bot to work. Creates a verified role, removes all permissions from the everyone role, and creates a verification channel. Can also be used to fix server configuration is some cases.\n
+\`${pf}configure domain get\` — List the domains in the domain filter.\n
+\`${pf}configure domain add example.com\` — Add the specified domain to the domain filter.\n
+\`${pf}configure domain remove example.com\` — Remove the specified domain from the domain filter.\n
+\`${pf}configure prefix !\` — Set the bot's command prefix symbol.\n
+\`${pf}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
+\`${pf}configure autoverifyall\` — Add the verified role to all the current server member. This option is for pre-existing communities, that want to switch over to this bot for verification.\n`
+      })
+    .setFooter('Version 1.0.0', img);
 }
 
 export function miniHelpMessage(prefix: string) {
+  const pf = prefix;
   return new MessageEmbed()
     .setAuthor('Help Message', img)
     .setColor('#cccccc')
     .setTitle("Praetorian")
-    .setDescription(`A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.`)
+    .setDescription("A bot for email verifying new server members, before giving them access to the server. The email has to belong to a specific configurable domain.")
     .addFields({
       name: "User Commands",
-      value: `
-        \`${prefix}verify user@example.com\` — Start user verification for the specified email id.\n
-        \`${prefix}code 123456\` — Validate the entered verification code.\n
-        \`${prefix}help\` — Print this help message.\n
-    `})
-    .setFooter('Version 1.0.0-beta', img);
+      value:
+`\`${pf}verify user@example.com\` — Start user verification for the specified email id.\n
+\`${pf}code 123456\` — Validate the entered verification code.\n
+\`${pf}help\` — Print this help message.\n`
+    })
+    .setFooter('Version 1.0.0', img);
 }
 
 export function errorMessage(issues: EmbedFieldData[]) {
@@ -54,7 +51,6 @@ export function errorMessage(issues: EmbedFieldData[]) {
     .setAuthor('Error executing command', img)
     .setColor('#cccccc')
     .setTitle('Encountered the following issues:')
-    // .setDescription("Fix the following issues preventing the {} command from working.")
     .addFields(issues);
 }
 
@@ -82,13 +78,14 @@ export function introMessage() {
     .addFields([
       {
         name: "1️⃣ Use the \`!setup\` command",
-        value: `This will create a 'Verified' role and tranfer the basic permission from everyone to this role instead.
-        It will also create a verification channel, which is the only place the bot will respond to user commands to reduce spam.`
+        value:
+          `This will create a 'Verified' role and tranfer the basic permission from everyone to this role instead.
+It will also create a verification channel, which is the only place the bot will respond to user commands to reduce spam.`
       },
       {
         name: "2️⃣ Use the \`!help\` command in the verification channel",
         value: "This will list all the available commands, along with a description of what they do."
       }
     ])
-    .setFooter('Version 1.0.0-beta', img);
+    .setFooter('Version 1.0.0', img);
 }

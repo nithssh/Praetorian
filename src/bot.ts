@@ -137,14 +137,15 @@ client.on("message", async (msg: Message) => {
       if (domains.filter(x => userDomain.endsWith(x)).length === 0) {
         issues.push({
           name: "❌ WRONG EMAIL ID",
-          value: `The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domains. 
-              Please try again with the right email address [example@${sp.domains.split(" ")[0]}].`
+          value: 
+`The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domain(s). 
+Please try again with the right email address [example@${sp.domains.split(" ")[0]}].`
         });
       }
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
-      logger.log(`Rejeced invalid verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
+      logger.log(`Rejected invalid verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
     logger.log(`Started evaluating verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
