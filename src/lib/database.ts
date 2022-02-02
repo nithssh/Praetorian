@@ -104,10 +104,18 @@ export class DB {
       return SetSessionInfoResult.SessionAlreadyActive;
     } else {
       // session has expired, create the new one
-      this.db.run(
-        `UPDATE ActiveVeriTable SET code=?, timestamp=? WHERE email=? AND server_id=?`,
-        [SessionInfo.verification_code, SessionInfo.timestamp, SessionInfo.email, SessionInfo.server_id]
-      );
+      await this.deleteSessionInfo(SessionInfo.email, SessionInfo.server_id);
+      await this.get(
+        `INSERT INTO ActiveVeriTable
+        (email, discord_id, server_id, code, timestamp) 
+        VALUES (?, ?, ?, ?, ?)`,
+        [
+          SessionInfo.email,
+          SessionInfo.discord_id,
+          SessionInfo.server_id,
+          SessionInfo.verification_code,
+          SessionInfo.timestamp,
+        ]);
       return SetSessionInfoResult.SuccessfullyUpdated;
     }
   }
@@ -115,6 +123,7 @@ export class DB {
   // async deleteSessionInfo(SessionInfo: SessionInfo) {
   // }
 
+  /// Deletes all the verification sessions from the table
   async deleteSessionInfo (email: string, server_id: string) {
     await this.get(
       `DELETE FROM ActiveVeriTable
