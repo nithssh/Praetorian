@@ -13,13 +13,13 @@ describe('Backend', function () {
 
   // cleanup in case the previous run failed in the middle
   before(async function () {
-    await db.deleteSessionInfo(email, server_id);
+    await db.deleteSessionsByEmail(email, server_id);
     let verified = new VerifiedProfile(email, discord_id, server_id, '');
     await db.deleteVerifiedUser(verified);
   });
 
   afterEach(async function () {
-    await db.deleteSessionInfo(email, server_id);
+    await db.deleteSessionsByEmail(email, server_id);
     let verified = new VerifiedProfile(email, discord_id, server_id, '');
     await db.deleteVerifiedUser(verified);
   });
