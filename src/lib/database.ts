@@ -38,7 +38,7 @@ export class DB {
     });
   }
 
-  async get(sql: string, params: Array<string|null>): Promise<any> {
+  async get(sql: string, params: Array<string | null>): Promise<any> {
     const that = this.db;
     return new Promise(function (resolve, reject) {
       that.all(sql, params, function (error, rows) {
@@ -104,7 +104,7 @@ export class DB {
       return SetSessionInfoResult.SessionAlreadyActive;
     } else {
       // session has expired, create the new one
-      await this.deleteSessionInfo(SessionInfo.email, SessionInfo.server_id);
+      await this.deleteSessionsByUser(SessionInfo.discord_id, SessionInfo.server_id);
       await this.get(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp) 
@@ -120,11 +120,7 @@ export class DB {
     }
   }
 
-  // async deleteSessionInfo(SessionInfo: SessionInfo) {
-  // }
-
-  /// Deletes all the verification sessions from the table
-  async deleteSessionInfo (email: string, server_id: string) {
+  async deleteSessionsByEmail(email: string, server_id: string) {
     await this.get(
       `DELETE FROM ActiveVeriTable
       WHERE email=? AND server_id=?`,
@@ -134,6 +130,18 @@ export class DB {
       ]
     );
   }
+
+  async deleteSessionsByUser(discord_id: string, server_id: string) {
+    await this.get(
+      `DELETE FROM ActiveVeriTable
+      WHERE discord_id=? AND server_id=?`,
+      [
+        discord_id,
+        server_id
+      ]
+    );
+  }
+
 
   async getSessionCode(discord_id: string, server_id: string): Promise<GetSessionCodeResult | number> {
     let row = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,

@@ -20,13 +20,13 @@ export async function startVerificationProcess(email: string, discord_id: string
     try {
       emailSuccess = await sendMail(session.email, session.verification_code);
     } catch (err) {
-      await db.deleteSessionInfo(email, server_id);
+      await db.deleteSessionsByEmail(email, server_id);
       return StartVerificationResult.InvalidEmailerLogin;
     }
     if (emailSuccess) {
       return status as unknown as StartVerificationResult;
     } else {
-      await db.deleteSessionInfo(email, server_id);
+      await db.deleteSessionsByEmail(email, server_id);
       return StartVerificationResult.ActionFailed;
     }
   } else {
@@ -57,7 +57,7 @@ async function storeVerifiedEmail(discord_id: string, server_id: string) {
     row.timestamp,
   );
   await db.setVerifiedUser(verifiedProfile);
-  await db.deleteSessionInfo(verifiedProfile.email, verifiedProfile.server_id);
+  await db.deleteSessionsByEmail(verifiedProfile.email, verifiedProfile.server_id);
 };
 
 
