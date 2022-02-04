@@ -1,58 +1,41 @@
-import * as fs from 'fs'
+import * as fsp from 'fs/promises';
 import { ServerPreferences } from './datamodels';
 
 export class Logger {
-  file!: number;
-  date: Date;
-  constructor() {
-    this.date = new Date();
-    // change the file to be day segregated
-    fs.open("./logs/latest.log", 'a+', (err, fd) => {
-      if (err) {
-        if (err.code = "ENOENT") {
-          fs.mkdir("./logs", () => {
-            fs.open("./logs/latest.log", 'a+', (errNew, fd) => {
-              if (!errNew) {
-                this.file = fd;
-              } else {
-                console.error(errNew.message);
-                process.exit(3);
-              }
-            });
-          });
-        }
-      } else {
-        this.file = fd;
-      }
-    });
+  private _lastFileName: string | undefined;
+  private get fileName(): string {
+    let d = new Date();
+    let newFileName = `log-${d.getDate()}-${d.getMonth()}-${d.getFullYear()}.log`
+    if (!this._lastFileName || this._lastFileName != newFileName) {
+      this._lastFileName = newFileName; // if date changed or is uninitialized
+    }
+    return this._lastFileName;
   }
 
-  async log(message: string, level: LogLevel = LogLevel.Log, logToConsole: boolean = false, sp: ServerPreferences | undefined = undefined): Promise<void | NodeJS.ErrnoException> {
-    return new Promise((resolve, reject) => {
-      let logMessage;
-      if (sp) {
-        logMessage = `[${this.date.toISOString()}] [${LogLevel[level]}] [${sp.server_id}] ${message}`;
-      } else {
-        logMessage = `[${this.date.toISOString()}] [${LogLevel[level]}] ${message}`;
-      }
-      fs.appendFile(this.file, `${logMessage}\n`, (err) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve();
-        }
-      });
-      if (level == LogLevel.Error && logToConsole) {
-        console.error(logMessage);
-      } else if (logToConsole) {
-        console.log(logMessage);
-      }
-    });
-  }
+  async log(message: string, level: LogLevel = LogLevel.Log, logToConsole: boolean = false, sp: ServerPreferences | undefined = undefined) {
+    let path = `./logs/${this.fileName}`;
+    let logMessage: string;
+    if (sp) {
+      logMessage = `[${Date()}] [${LogLevel[level]}] [${sp.server_id}]: ${message}\n`;
+    } else {
+      logMessage = `[${Date()}] [${LogLevel[level]}]: ${message}\n`;
+    }
 
-  exitSync() {
-    fs.closeSync(this.file);
-  }
+    // write to file
+    try {
+      await fsp.access(path);
+    } catch {
+      await fsp.mkdir('./logs');
+    }
+    fsp.appendFile(path, logMessage).catch(err => console.error(err));
+
+    // print to console if needed
+    if (level == LogLevel.Error && logToConsole) {
+      console.error(logMessage);
+    } else if (logToConsole) {
+      console.log(logMessage);
+    }
+  };
 }
 
 export enum LogLevel {
