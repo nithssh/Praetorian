@@ -137,8 +137,8 @@ client.on("message", async (msg: Message) => {
       if (domains.filter(x => userDomain.endsWith(x)).length === 0) {
         issues.push({
           name: "❌ WRONG EMAIL ID",
-          value: 
-`The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domain(s). 
+          value:
+            `The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domain(s). 
 Please try again with the right email address [example@${sp.domains.split(" ")[0]}].`
         });
       }
@@ -168,7 +168,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       logger.log(`An error occured trying to send the verification email to (${msg.author.id}). ActionFailed, not InvalidEmailerLogin.`, LogLevel.Error, false, sp);
     } else if (status == StartVerificationResult.InvalidEmailerLogin) {
       msg.reply(`An error occured trying to send the verification email. Please try again later.`)
-      logger.log(`Error occured trying to send email. Terminating program...`, LogLevel.Error, true, sp);
+      logger.log(`Unable to send email due to invalid mailer login. Terminating program...`, LogLevel.Error, true, sp);
       process.exit(2); // terminate the program since it is misconfigured and can't work properly
     }
   }
@@ -222,7 +222,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         logger.log(`Successfully verified (${msg.author.id}).`, LogLevel.Info, false, sp);
       } else {
         msg.reply("❌ Entered code is invalid, please try again.");
-        logger.log(`Rejected code from (${msg.author.id}).`, LogLevel.Info, false, sp);
+        logger.log(`Rejected wrong code from (${msg.author.id}).`, LogLevel.Info, false, sp);
       }
     } else if (status in GetSessionCodeResult) {
       if (status === GetSessionCodeResult.NoActiveSession) {
@@ -330,7 +330,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         name: "❌ PREVIOUSLY CREATED CHANNEL EXISTS",
         value: "A verification channel previously created by Praetorian still exists. To fix this run this command again after deleting that channel"
       }]));
-      logger.log("PREVIOUSLY CREATED CHANNEL EXISTS", LogLevel.Warning, false, sp);
+      logger.log("Previously created verification channel exists", LogLevel.Info, false, sp);
       let cmd_channel = msg.guild?.channels.cache.get(sp.cmd_channel!);
       msg.channel.send(`❗ Praetorian won't process commands outside #${cmd_channel} to reduce spam, _including_ admin commands.`);
     };
@@ -352,18 +352,20 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
     }
     if (issues.length !== 0) {
       msg.reply(errorMessage(issues));
-      logger.log(`Rejeced invalid configure command from (${msg.author.id}).`, LogLevel.Info, false, sp);
+      logger.log(`Rejected invalid configure command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
     let cmdParts = msg.content.split(" ");
     if (cmdParts[1] === "domain") {
       if (cmdParts[2] == "add") {
-        if (sp.domains.includes(cmdParts[3])) {
+        // if (sp.domains.includes(cmdParts[3])) {
+        if (sp.domains.split(" ").filter(x => x == cmdParts[3]).length != 0) {
           msg.reply(errorMessage([{
             name: "❌ DOMAIN ALREADY IN FILTER",
             value: "The provided domain is already part of the filter."
           }]));
+          logger.log(`Didn't add domain(${cmdParts[3]}) to filter, as it is already part of it.`, LogLevel.Info, false, sp);
           return;
         } else {
           spmgr.setServerPreferences({
@@ -374,6 +376,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
             "role_id": sp.role_id
           });
           msg.reply(`Successfully added \`${cmdParts[3]}\` to the domain filter.`);
+          logger.log(`Added (${cmdParts[3]}) to domain filter.`, LogLevel.Info, false, sp);
         }
       } else if (cmdParts[2] == "remove") {
         if (sp.domains.includes(cmdParts[3])) {
@@ -382,6 +385,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
               name: "❌ LAST DOMAIN IN FILTER",
               value: "Can't remove the last domain in the filter."
             }]));
+            logger.log(`Didn't remove domain (${cmdParts[3]}) from domain filter, as it is the last one left.`, LogLevel.Info, false, sp);
             return;
           }
           else {
@@ -393,7 +397,8 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
               "role_id": sp.role_id
             });
             msg.reply(`Successfully removed \`${cmdParts[3]}\` from the domain filter.`);
-          }
+            logger.log(`Removed domain (${cmdParts[3]}) from domain filter.`, LogLevel.Info, false, sp);
+}
         }
       } else if (cmdParts[2] == "get") {
         msg.reply(domainList(sp.domains.split(" ")));
@@ -407,7 +412,8 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         "role_id": sp.role_id
       });
       msg.reply(`Successfully updated command prefix to \`${cmdParts[2]}\``);
-    } else if (cmdParts[1] === "setcmdchannel") {
+      logger.log(`Updated command prefix to \`${cmdParts[2]}\``, LogLevel.Info, false, sp);
+      } else if (cmdParts[1] === "setcmdchannel") {
       // reset the permissionOverwrites for the previous 
       if (sp.cmd_channel != null) {
         let cmdChannel = msg.guild!.channels.resolve(sp.cmd_channel);
@@ -441,8 +447,9 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         "role_id": sp.role_id
       });
       if (msg.channel.type != 'dm') { // check to satisfy the linter. This is checked at the start of the onMessage callback.
-        msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
-      }
+        msg.reply(`Successfully updated command channel to \`${msg.channel}\``);
+        logger.log(`Updated command channel to ${msg.channel.name}(${msg.channel.id}) from setcmdchannel command.`, LogLevel.Info, false, sp);
+}
 
     } else if (cmdParts[1] === "autoverifyall") {
       let issues: EmbedFieldData[] = [];
@@ -472,7 +479,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       }
       if (issues.length !== 0) {
         msg.reply(errorMessage(issues));
-        logger.log(`Rejeced invalid autoverifyall command from (${msg.author.id}).`, LogLevel.Info, false, sp);
+        logger.log(`Rejected invalid autoverifyall command from (${msg.author.id}) for ${issues}`, LogLevel.Info, false, sp);
         return;
       }
 
@@ -489,7 +496,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       });
       // msg.react("✅");
       msg.reply("Successfully completed `autoverifyall` command.");
-      logger.log(`Successfully completed autoverifyall command (${msg.author.id}).`, LogLevel.Info, false, sp);
+      logger.log(`Successfully completed autoverifyall command from (${msg.author.id}).`, LogLevel.Info, false, sp);
     }
   }
 

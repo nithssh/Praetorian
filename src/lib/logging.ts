@@ -23,7 +23,7 @@ export class Logger {
 
     // write to file
     try {
-      await fsp.access(path);
+      await fsp.access('./logs');
     } catch {
       await fsp.mkdir('./logs');
     }
