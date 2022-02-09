@@ -21,7 +21,7 @@ export class Logger {
       logMessage = `[${Date()}] [${LogLevel[level]}]: ${message}\n`;
     }
 
-    // write to file
+    // create folder if necessary
     try {
       await fsp.access('./logs');
     } catch {

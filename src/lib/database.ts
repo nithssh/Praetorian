@@ -77,9 +77,8 @@ export class DB {
       return SetSessionInfoResult.EmailAlreadyTaken;
     }
 
-    // Old notes:
-    // Check if there is no session currently, by email (not discord user).
-    // This causes and issue when a user starts two sessions with two different
+    // Check if there is no session currently, by user.
+    // This avoids the issue when a user starts two sessions with two different
     // emails, where getSessionCode will return the first sessions code, 
     // even if it was made in error for a wrong email id.
     let currentSessionRow = await this.get(`SELECT * FROM ActiveVeriTable WHERE discord_id=? AND server_id=?`,
