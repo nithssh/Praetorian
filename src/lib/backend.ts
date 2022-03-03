@@ -113,8 +113,8 @@ function randomIntFromInterval(min: number, max: number): number {
 }
 
 export enum ValidateCodeResult {
-  ValidationSuccess,
-  ValidationFailed,
+  ValidationSuccess = "ValidationSuccess",
+  ValidationFailed = "ValidationFailed",
 }
 
 // extends SetSessionInfoResult

@@ -1,52 +1,68 @@
-import { Database } from "sqlite3";
+import Database from 'better-sqlite3';
 import { ServerPreferences, SessionInfo, VerifiedProfile } from "./datamodels";
 
 export class DB {
-  db: Database;
+  db: Database.Database;
   constructor(filename: string = './database.db') {
-    this.db = new Database(filename, (err) => {
-      if (err) {
-        console.error(err.message);
-      } else {
-        // console.log("Connected to Database.");
-        this.db.run(`CREATE TABLE IF NOT EXISTS ActiveVeriTable (
+    this.db = new Database(filename);
+
+    let avt = this.db.prepare(`CREATE TABLE IF NOT EXISTS ActiveVeriTable (
+      email TEXT NOT NULL,
+      discord_id TEXT NOT NULL,
+      server_id TEXT NOT NULL,
+      code INTEGER NOT NULL,
+      timestamp INTEGER NOT NULL)`
+    );
+
+    let vt = this.db.prepare(`CREATE TABLE IF NOT EXISTS VerifiedTable (
           email TEXT NOT NULL,
           discord_id TEXT NOT NULL,
           server_id TEXT NOT NULL,
-          code INTEGER NOT NULL,
-          timestamp INTEGER NOT NULL
-          )`
-        );
+          timestamp INTEGER NOT NULL)`
+    );
 
-        this.db.run(`CREATE TABLE IF NOT EXISTS VerifiedTable (
-          email TEXT NOT NULL,
-          discord_id TEXT NOT NULL,
-          server_id TEXT NOT NULL,
-          timestamp INTEGER NOT NULL
-          )`
-        );
-
-        this.db.run(`CREATE TABLE IF NOT EXISTS ServerPreferencesTable (
+    let spt = this.db.prepare(`CREATE TABLE IF NOT EXISTS ServerPreferencesTable (
           server_id TEXT PRIMARY KEY UNIQUE,
           prefix TEXT NOT NULL,
           domain TEXT,
           cmd_channel TEXT,
-          role_id TEXT
-          )`
-        );
+          role_id TEXT)`
+    );
+
+    avt.run();
+    vt.run();
+    spt.run();
+  }
+
+  // Runs the query that don't return.
+  async exec(sql: string, params: Array<string | null>): Promise<any> {
+    const that = this.db;
+    return new Promise(function (resolve, reject) {
+      let stmt = that.prepare(sql);
+      try {
+        stmt.run(params);
+        resolve(null);
+      } catch (err) {
+        reject(err);
       }
     });
   }
 
+  // Runs the query and returns the result array. MUST use #exec() for statements
+  // that don't return anything. Returns the first row in the result.
   async get(sql: string, params: Array<string | null>): Promise<any> {
     const that = this.db;
     return new Promise(function (resolve, reject) {
-      that.all(sql, params, function (error, rows) {
-        if (error)
-          reject(error);
+      let stmt = that.prepare(sql);
+      try {
+        let result = stmt.all(params);
+        if (result.length === 0)
+          resolve(undefined);
         else
-          resolve(rows[0]);
-      });
+          resolve(result[0]);
+      } catch (err) {
+        reject(err);
+      }
     });
   }
 
@@ -87,7 +103,7 @@ export class DB {
         SessionInfo.server_id
       ]);
     if (currentSessionRow === undefined) {
-      await this.get(
+      await this.exec(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp) 
         VALUES (?, ?, ?, ?, ?)`,
@@ -108,7 +124,7 @@ export class DB {
     } else {
       // session has expired, create the new one
       await this.deleteSessionsByUser(SessionInfo.discord_id, SessionInfo.server_id);
-      await this.get(
+      await this.exec(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp) 
         VALUES (?, ?, ?, ?, ?)`,
@@ -124,7 +140,7 @@ export class DB {
   }
 
   async deleteSessionsByEmail(email: string, server_id: string) {
-    await this.get(
+    await this.exec(
       `DELETE FROM ActiveVeriTable
       WHERE email=? AND server_id=?`,
       [
@@ -135,7 +151,7 @@ export class DB {
   }
 
   async deleteSessionsByUser(discord_id: string, server_id: string) {
-    await this.get(
+    await this.exec(
       `DELETE FROM ActiveVeriTable
       WHERE discord_id=? AND server_id=?`,
       [
@@ -153,7 +169,7 @@ export class DB {
     if (row === undefined) {
       return GetSessionCodeResult.NoActiveSession;
     } else {
-      if (new Date().getTime() - row.timestamp > 900000) {
+      if (Date.now() - row.timestamp > 900000) {
         return GetSessionCodeResult.LastSessionExpired;
       } else {
         return row.code;
@@ -173,7 +189,7 @@ export class DB {
   }
 
   async setVerifiedUser(VerifiedEmail: VerifiedProfile) {
-    await this.get(
+    await this.exec(
       `INSERT INTO VerifiedTable
       (email, discord_id, server_id, timestamp) 
       VALUES (?, ?, ?, ?)`,
@@ -187,7 +203,7 @@ export class DB {
   }
 
   async deleteVerifiedUser(VerifiedEmail: VerifiedProfile) {
-    await this.get(
+    await this.exec(
       `DELETE FROM VerifiedTable
        WHERE server_id=? AND (discord_id=? OR email=?)`,
       [
@@ -204,7 +220,7 @@ export class DB {
 
   async setSeverPreferences(ServerPreferences: ServerPreferences) {
     if (await this.doesServerPreferenceExist(ServerPreferences.server_id)) {
-      await this.get(`
+      await this.exec(`
         UPDATE ServerPreferencesTable
         SET domain=?, prefix=?, cmd_channel=?, role_id=?
         WHERE server_id=?`,
@@ -217,7 +233,7 @@ export class DB {
         ]
       );
     } else {
-      await this.get(
+      await this.exec(
         `INSERT INTO ServerPreferencesTable (server_id, prefix, domain, cmd_channel, role_id) VALUES (?, ?, ?, ?, ?)`,
         [
           ServerPreferences.server_id,
@@ -238,8 +254,8 @@ export class DB {
 }
 
 export enum GetSessionCodeResult {
-  NoActiveSession,
-  LastSessionExpired
+  NoActiveSession = "NoActiveSession",
+  LastSessionExpired = "LastSessionExpired"
 }
 
 export enum SetSessionInfoResult {
