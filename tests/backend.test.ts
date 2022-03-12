@@ -13,36 +13,36 @@ describe('Backend', function () {
 
   // cleanup in case the previous run failed in the middle
   before(async function () {
-    await db.deleteSessionInfo(email, server_id);
+    await db.deleteSessionsByEmail(email, server_id);
     let verified = new VerifiedProfile(email, discord_id, server_id, '');
     await db.deleteVerifiedUser(verified);
   });
 
   afterEach(async function () {
-    await db.deleteSessionInfo(email, server_id);
+    await db.deleteSessionsByEmail(email, server_id);
     let verified = new VerifiedProfile(email, discord_id, server_id, '');
     await db.deleteVerifiedUser(verified);
   });
 
-  describe('VerificationProcess', function () {
+  describe('#startVerificationProcess', function () {
     it('should return SuccessfullyCreated, for first time verifiers', async function () {
       let status = await backend.startVerificationProcess(email, discord_id, server_id);
 
       assert.equal(status, backend.StartVerificationResult.SuccessfullyCreated);
     });
 
-    it('should return SessionAlreadyActive, when starting verification process again WITHIN 15 mins', async function () {
+    it("Should return SessionReset, when session is re-requested", async function() {
       await backend.startVerificationProcess(email, discord_id, server_id);
 
       let status = await backend.startVerificationProcess(email, discord_id, server_id);
 
-      assert.equal(status, backend.StartVerificationResult.SessionAlreadyActive);
+      assert.strictEqual(status, backend.StartVerificationResult.SessionReset);     
     });
 
     it('should return SuccessfullyUpdated, when starting verification process again AFTER 15 mins', async function () {
       let newTimeStamp = new Date().getTime() - 900000; // 15 mins in the past
       // insert expired session into database first
-      await db.get(
+      await db.exec(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp)
         VALUES (?, ?, ?, ?, ?)`,
@@ -56,7 +56,7 @@ describe('Backend', function () {
 
     it("should return EmailAlreadyTaken, when given email is already verified.", async function () {
       // insert the email as verified into database first.
-      await db.get(
+      await db.exec(
         `INSERT INTO VerifiedTable
         (email, discord_id, server_id, timestamp)
         VALUES (?, ?, ?, ?)`,
@@ -78,10 +78,10 @@ describe('Backend', function () {
     });
   });
 
-  describe('CodeValidation', function () {
+  describe('#validateCode', function () {
     const code = '567890';
     it('should return ValidationSuccess on correct code', async function () {
-      await db.get(
+      await db.exec(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp)
         VALUES (?, ?, ?, ?, ?)`,
@@ -94,7 +94,7 @@ describe('Backend', function () {
     });
 
     it('should return ValidationFail on wrong code', async function () {
-      await db.get(
+      await db.exec(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp)
         VALUES (?, ?, ?, ?, ?)`,
@@ -113,9 +113,9 @@ describe('Backend', function () {
     });
 
     it('should return LastSessionExpired on expired entries', async function () {
-      let newTimeStamp = new Date().getTime() - 900000; // 15 mins in the past
+      let newTimeStamp = Date.now() - 900000; // 15 mins in the past
       // insert expired session into database first
-      await db.get(
+      await db.exec(
         `INSERT INTO ActiveVeriTable
         (email, discord_id, server_id, code, timestamp)
         VALUES (?, ?, ?, ?, ?)`,

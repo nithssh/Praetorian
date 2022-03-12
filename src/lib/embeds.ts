@@ -26,7 +26,7 @@ export function fullHelpMessage(prefix: string) {
 \`${pf}configure setCmdChannel\` — Manually set the verification channel to the channel this command is sent in. Automatically set by the \`setup\` command.\n
 \`${pf}configure autoverifyall\` — Add the verified role to all the current server member. This option is for pre-existing communities, that want to switch over to this bot for verification.\n`
       })
-    .setFooter('Version 1.0.0', img);
+    // .setFooter('Version 1.0.0', img);
 }
 
 export function miniHelpMessage(prefix: string) {
@@ -43,7 +43,7 @@ export function miniHelpMessage(prefix: string) {
 \`${pf}code 123456\` — Validate the entered verification code.\n
 \`${pf}help\` — Print this help message.\n`
     })
-    .setFooter('Version 1.0.0', img);
+    // .setFooter('Version 1.0.0', img);
 }
 
 export function errorMessage(issues: EmbedFieldData[]) {
@@ -87,5 +87,4 @@ It will also create a verification channel, which is the only place the bot will
         value: "This will list all the available commands, along with a description of what they do."
       }
     ])
-    .setFooter('Version 1.0.0', img);
-}
+   // .setFooter('Version 1.0.0', img);

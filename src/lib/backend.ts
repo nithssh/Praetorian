@@ -1,4 +1,4 @@
-import { sendMail } from "./email";
+import * as mailer from "./email";
 import { ServerPreferences, SessionInfo, VerifiedProfile } from "./datamodels";
 import { DB, GetSessionCodeResult, SetSessionInfoResult } from "./database";
 
@@ -15,22 +15,30 @@ export async function startVerificationProcess(email: string, discord_id: string
   let session = createVerficationSession(email, discord_id, server_id);
   let status = await db.setSessionInfo(session);
 
-  if (status == SetSessionInfoResult.SuccessfullyCreated || status == SetSessionInfoResult.SuccessfullyUpdated) {
-    let emailSuccess;
-    try {
-      emailSuccess = await sendMail(session.email, session.verification_code);
-    } catch (err) {
-      await db.deleteSessionInfo(email, server_id);
-      return StartVerificationResult.InvalidEmailerLogin;
+  switch (status) {
+    case SetSessionInfoResult.SuccessfullyCreated:
+    case SetSessionInfoResult.SuccessfullyUpdated: {
+      let emailSuccess;
+      try {
+        emailSuccess = await mailer.sendMail(session.email, session.verification_code);
+      } catch (err) {
+        await db.deleteSessionsByEmail(session.email, session.server_id);
+        return StartVerificationResult.InvalidEmailerLogin;
+      }
+      if (emailSuccess) {
+        return status as unknown as StartVerificationResult;
+      } else {
+        await db.deleteSessionsByEmail(session.email, session.server_id);
+        return StartVerificationResult.ActionFailed;
+      }
     }
-    if (emailSuccess) {
+    case SetSessionInfoResult.SessionAlreadyActive: {
+      await db.deleteSessionsByUser(session.discord_id, session.server_id);
+      await db.setSessionInfo(session);
+      return StartVerificationResult.SessionReset;
+    }
+    default:
       return status as unknown as StartVerificationResult;
-    } else {
-      await db.deleteSessionInfo(email, server_id);
-      return StartVerificationResult.ActionFailed;
-    }
-  } else {
-    return status as unknown as StartVerificationResult;
   }
 }
 
@@ -57,7 +65,7 @@ async function storeVerifiedEmail(discord_id: string, server_id: string) {
     row.timestamp,
   );
   await db.setVerifiedUser(verifiedProfile);
-  await db.deleteSessionInfo(verifiedProfile.email, verifiedProfile.server_id);
+  await db.deleteSessionsByEmail(verifiedProfile.email, verifiedProfile.server_id);
 };
 
 
@@ -105,8 +113,8 @@ function randomIntFromInterval(min: number, max: number): number {
 }
 
 export enum ValidateCodeResult {
-  ValidationSuccess,
-  ValidationFailed,
+  ValidationSuccess = "ValidationSuccess",
+  ValidationFailed = "ValidationFailed",
 }
 
 // extends SetSessionInfoResult
@@ -114,7 +122,7 @@ export enum StartVerificationResult {
   ServerMemberAlreadyVerified,
   EmailAlreadyTaken,
   SuccessfullyCreated,
-  SessionAlreadyActive,
+  SessionReset,
   SuccessfullyUpdated,
   ActionFailed,
   InvalidEmailerLogin

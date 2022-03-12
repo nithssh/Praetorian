@@ -1,11 +1,12 @@
 import { Client, DMChannel, EmbedFieldData, Message, Permissions } from "discord.js";
 import dotenv from 'dotenv';
-import { ValidateCodeResult, createServerPreferences, deleteVerifiedUser, startVerificationProcess, validateCode, StartVerificationResult } from "./lib/backend";
+import * as backend from "./lib/backend";
+import { StartVerificationResult, ValidateCodeResult } from './lib/backend';
 import { ServerPreferencesCacher } from "./lib/caching";
 import { GetSessionCodeResult } from "./lib/database";
-import { domainList, errorMessage, fullHelpMessage, introMessage, miniHelpMessage } from "./lib/embeds";
-import { isSetChannelCommand, isValidCodeCommand, isValidConfigureCommand, isValidVerifyCommand } from "./lib/utilities";
-import { Logger, LogLevel } from './lib/logging'
+import * as embed from "./lib/embeds";
+import { Logger, LogLevel } from './lib/logging';
+import * as utils from "./lib/utilities";
 
 dotenv.config();
 
@@ -45,7 +46,7 @@ client.on('guildMemberAdd', (guildMember) => {
 })
 
 client.on('guildMemberRemove', async (guildMember) => {
-  deleteVerifiedUser(guildMember.id, guildMember.guild.id);
+  backend.deleteVerifiedUser(guildMember.id, guildMember.guild.id);
   logger.log(`Removed user (${guildMember.id}) from server's verified users table`, LogLevel.Info, false, await spmgr.getServerPreferences(guildMember.guild.id))
 })
 
@@ -59,10 +60,10 @@ client.on('guildMemberRemove', async (guildMember) => {
 client.on('guildCreate', async (guild) => {
   let sp = await spmgr.getServerPreferences(guild.id);
   try {
-    createServerPreferences(guild.id.toString());
+    backend.createServerPreferences(guild.id.toString());
     if (guild.systemChannel) {
       try {
-        guild!.systemChannel.send(introMessage());
+        guild!.systemChannel.send(embed.introMessage());
       } catch (err) {
         logger.log(`Unable to send message in server's system channel. ${err}`, LogLevel.Error, false, sp)
       }
@@ -94,7 +95,7 @@ client.on("message", async (msg: Message) => {
    *   - msg is in sp.cmd_channel (or cmd_channel is not setup)
    */
   if (msg.content !== `${prefix}setup`) {
-    if (!isSetChannelCommand(msg)) {
+    if (!utils.isSetChannelCommand(msg)) {
       if (await spmgr.isCmdChannelSetup(msg.guild!.id.toString())) {
         if (msg.channel.id !== sp.cmd_channel) {
           return;
@@ -116,16 +117,16 @@ client.on("message", async (msg: Message) => {
   if (msg.content.startsWith(`${prefix}help`)) {
     let embedMessage;
     if (msg!.guild!.member(msg.author)!.hasPermission(['MANAGE_ROLES', 'MANAGE_GUILD'])) {
-      embedMessage = fullHelpMessage(prefix);
+      embedMessage = embed.fullHelpMessage(prefix);
     } else {
-      embedMessage = miniHelpMessage(prefix);
+      embedMessage = embed.miniHelpMessage(prefix);
     }
     msg.channel.send(embedMessage);
   }
 
   if (msg.content.startsWith(`${prefix}verify`)) {
     let issues: EmbedFieldData[] = [];
-    if (!isValidVerifyCommand(msg)) {
+    if (!utils.isValidVerifyCommand(msg)) {
       issues.push({
         name: "❌ INVALID COMMAND",
         value: "The command was not properly formed. Check help for usage."
@@ -137,24 +138,24 @@ client.on("message", async (msg: Message) => {
       if (domains.filter(x => userDomain.endsWith(x)).length === 0) {
         issues.push({
           name: "❌ WRONG EMAIL ID",
-          value: 
-`The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domain(s). 
+          value:
+            `The email must be part of the \`${sp.domains.replace(" ", ", ")}\` domain(s). 
 Please try again with the right email address [example@${sp.domains.split(" ")[0]}].`
         });
       }
     }
     if (issues.length !== 0) {
-      msg.reply(errorMessage(issues));
+      msg.reply(embed.errorMessage(issues));
       logger.log(`Rejected invalid verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
     logger.log(`Started evaluating verify command from (${msg.author.id}).`, LogLevel.Info, false, sp);
-    let status = await startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id.toString());
+    let status = await backend.startVerificationProcess(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id.toString());
     if (status === StartVerificationResult.EmailAlreadyTaken) {
       msg.reply(`This email is already taken [${msg.content.split(" ")[1]}].`);
-    } else if (status === StartVerificationResult.SessionAlreadyActive) {
-      msg.reply(`Verification code already requested within the last 15 mins. Check your email for the code, or try again later.`);
-      logger.log(`(${msg.author.id}) already has an active session, email not sent.`, LogLevel.Info, false, sp);
+    } else if (status === StartVerificationResult.SessionReset) {
+      msg.reply(`Sent code to new email address. Previous request deleted.`);
+      logger.log(`(${msg.author.id})'s session was reset, to new address.`, LogLevel.Info, false, sp);
     } else if (status === StartVerificationResult.SuccessfullyCreated) {
       msg.reply(`Verification email sent to ${msg.content.split(" ")[1]}`);
       logger.log(`Verification email sent to (${msg.author.id}).`, LogLevel.Info, false, sp);
@@ -168,14 +169,14 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       logger.log(`An error occured trying to send the verification email to (${msg.author.id}). ActionFailed, not InvalidEmailerLogin.`, LogLevel.Error, false, sp);
     } else if (status == StartVerificationResult.InvalidEmailerLogin) {
       msg.reply(`An error occured trying to send the verification email. Please try again later.`)
-      logger.log(`Error occured trying to send email. Terminating program...`, LogLevel.Error, true, sp);
+      logger.log(`Unable to send email due to invalid mailer login. Terminating program...`, LogLevel.Error, true, sp);
       process.exit(2); // terminate the program since it is misconfigured and can't work properly
     }
   }
 
   if (msg.content.startsWith(`${prefix}code`)) {
     let issues: EmbedFieldData[] = [];
-    if (!isValidCodeCommand(msg)) {
+    if (!utils.isValidCodeCommand(msg)) {
       issues.push({
         name: "❌ INVALID COMMAND",
         value: "The command was not properly formed. Check help for usage."
@@ -207,12 +208,12 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       });
     }
     if (issues.length !== 0) {
-      msg.reply(errorMessage(issues));
+      msg.reply(embed.errorMessage(issues));
       logger.log(`Rejeced invalid code command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
-    let status = await validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString());
+    let status = await backend.validateCode(msg.content.split(" ")[1], msg.author.id.toString(), msg!.guild!.id!.toString());
     if (status in ValidateCodeResult) {
       if (status == ValidateCodeResult.ValidationSuccess) {
         if (!sp.role_id) return;
@@ -222,7 +223,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         logger.log(`Successfully verified (${msg.author.id}).`, LogLevel.Info, false, sp);
       } else {
         msg.reply("❌ Entered code is invalid, please try again.");
-        logger.log(`Rejected code from (${msg.author.id}).`, LogLevel.Info, false, sp);
+        logger.log(`Rejected wrong code from (${msg.author.id}).`, LogLevel.Info, false, sp);
       }
     } else if (status in GetSessionCodeResult) {
       if (status === GetSessionCodeResult.NoActiveSession) {
@@ -249,7 +250,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       });
     }
     if (issues.length !== 0) {
-      msg.reply(errorMessage(issues));
+      msg.reply(embed.errorMessage(issues));
       logger.log(`Rejected invalid setup command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
@@ -287,7 +288,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         logger.log("Couldn't create verified role", LogLevel.Error, false, sp);
       }
     } else {
-      msg.channel.send(errorMessage([{
+      msg.channel.send(embed.errorMessage([{
         name: "ℹ VERIFIED ROLE ALREADY EXISTS",
         value: "Verified role wasn't created as one previously created already exists."
       }]));
@@ -326,11 +327,11 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       logger.log("Created and Updated #verification channel", LogLevel.Info, false, sp);
       msg.channel.send(`❗ Praetorian won't process commands outside ${createdChannel} to reduce spam, _including_ admin commands.`);
     } else {
-      msg.channel.send(errorMessage([{
+      msg.channel.send(embed.errorMessage([{
         name: "❌ PREVIOUSLY CREATED CHANNEL EXISTS",
         value: "A verification channel previously created by Praetorian still exists. To fix this run this command again after deleting that channel"
       }]));
-      logger.log("PREVIOUSLY CREATED CHANNEL EXISTS", LogLevel.Warning, false, sp);
+      logger.log("Previously created verification channel exists", LogLevel.Info, false, sp);
       let cmd_channel = msg.guild?.channels.cache.get(sp.cmd_channel!);
       msg.channel.send(`❗ Praetorian won't process commands outside #${cmd_channel} to reduce spam, _including_ admin commands.`);
     };
@@ -338,7 +339,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
 
   if (msg.content.startsWith(`${prefix}configure`)) {
     let issues: EmbedFieldData[] = [];
-    if (!isValidConfigureCommand(msg)) {
+    if (!utils.isValidConfigureCommand(msg)) {
       issues.push({
         name: "❌ INVALID COMMAND",
         value: "The command was not properly formed. Check help for usage."
@@ -351,19 +352,21 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       });
     }
     if (issues.length !== 0) {
-      msg.reply(errorMessage(issues));
-      logger.log(`Rejeced invalid configure command from (${msg.author.id}).`, LogLevel.Info, false, sp);
+      msg.reply(embed.errorMessage(issues));
+      logger.log(`Rejected invalid configure command from (${msg.author.id}).`, LogLevel.Info, false, sp);
       return;
     }
 
     let cmdParts = msg.content.split(" ");
     if (cmdParts[1] === "domain") {
       if (cmdParts[2] == "add") {
-        if (sp.domains.includes(cmdParts[3])) {
-          msg.reply(errorMessage([{
+        // if (sp.domains.includes(cmdParts[3])) {
+        if (sp.domains.split(" ").filter(x => x == cmdParts[3]).length != 0) {
+          msg.reply(embed.errorMessage([{
             name: "❌ DOMAIN ALREADY IN FILTER",
             value: "The provided domain is already part of the filter."
           }]));
+          logger.log(`Didn't add domain(${cmdParts[3]}) to filter, as it is already part of it.`, LogLevel.Info, false, sp);
           return;
         } else {
           spmgr.setServerPreferences({
@@ -374,14 +377,16 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
             "role_id": sp.role_id
           });
           msg.reply(`Successfully added \`${cmdParts[3]}\` to the domain filter.`);
+          logger.log(`Added (${cmdParts[3]}) to domain filter.`, LogLevel.Info, false, sp);
         }
       } else if (cmdParts[2] == "remove") {
         if (sp.domains.includes(cmdParts[3])) {
           if (sp.domains.split(" ").length === 1) {
-            msg.reply(errorMessage([{
+            msg.reply(embed.errorMessage([{
               name: "❌ LAST DOMAIN IN FILTER",
               value: "Can't remove the last domain in the filter."
             }]));
+            logger.log(`Didn't remove domain (${cmdParts[3]}) from domain filter, as it is the last one left.`, LogLevel.Info, false, sp);
             return;
           }
           else {
@@ -393,11 +398,12 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
               "role_id": sp.role_id
             });
             msg.reply(`Successfully removed \`${cmdParts[3]}\` from the domain filter.`);
+            logger.log(`Removed domain (${cmdParts[3]}) from domain filter.`, LogLevel.Info, false, sp);
           }
         }
       } else if (cmdParts[2] == "get") {
-        msg.reply(domainList(sp.domains.split(" ")));
-      }
+        msg.reply(embed.domainList(sp.domains.split(" ")));
+     }
     } else if (cmdParts[1] === "prefix") {
       spmgr.setServerPreferences({
         "server_id": sp.server_id,
@@ -407,6 +413,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         "role_id": sp.role_id
       });
       msg.reply(`Successfully updated command prefix to \`${cmdParts[2]}\``);
+      logger.log(`Updated command prefix to \`${cmdParts[2]}\``, LogLevel.Info, false, sp);
     } else if (cmdParts[1] === "setcmdchannel") {
       // reset the permissionOverwrites for the previous 
       if (sp.cmd_channel != null) {
@@ -441,7 +448,8 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         "role_id": sp.role_id
       });
       if (msg.channel.type != 'dm') { // check to satisfy the linter. This is checked at the start of the onMessage callback.
-        msg.reply(`Successfully updated command channel to \`${msg.channel.name}\``);
+        msg.reply(`Successfully updated command channel to \`${msg.channel}\``);
+        logger.log(`Updated command channel to ${msg.channel.name}(${msg.channel.id}) from setcmdchannel command.`, LogLevel.Info, false, sp);
       }
 
     } else if (cmdParts[1] === "autoverifyall") {
@@ -471,8 +479,8 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         });
       }
       if (issues.length !== 0) {
-        msg.reply(errorMessage(issues));
-        logger.log(`Rejeced invalid autoverifyall command from (${msg.author.id}).`, LogLevel.Info, false, sp);
+        msg.reply(embed.errorMessage(issues));
+        logger.log(`Rejected invalid autoverifyall command from (${msg.author.id}) for ${issues}`, LogLevel.Info, false, sp);
         return;
       }
 
@@ -481,7 +489,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         if (member.roles.highest.position < msg.guild!.me!.roles.highest.position!) {
           member.roles.add(sp.role_id!); // assured not-null by issues checks.
         } else {
-          msg.reply(errorMessage([{
+          msg.reply(embed.errorMessage([{
             name: "❌ PRAETORIAN ROLE POSITION",
             value: `Praetorian has lower roles than ${member.displayName}, and hence can't assign role to them.`
           }]));
@@ -489,7 +497,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
       });
       // msg.react("✅");
       msg.reply("Successfully completed `autoverifyall` command.");
-      logger.log(`Successfully completed autoverifyall command (${msg.author.id}).`, LogLevel.Info, false, sp);
+      logger.log(`Successfully completed autoverifyall command from (${msg.author.id}).`, LogLevel.Info, false, sp);
     }
   }
 
