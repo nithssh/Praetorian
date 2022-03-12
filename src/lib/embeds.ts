@@ -87,5 +87,4 @@ It will also create a verification channel, which is the only place the bot will
         value: "This will list all the available commands, along with a description of what they do."
       }
     ])
-    // .setFooter('Version 1.0.0', img);
-}
+   // .setFooter('Version 1.0.0', img);

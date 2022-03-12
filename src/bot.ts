@@ -403,7 +403,7 @@ Please try again with the right email address [example@${sp.domains.split(" ")[0
         }
       } else if (cmdParts[2] == "get") {
         msg.reply(embed.domainList(sp.domains.split(" ")));
-      }
+     }
     } else if (cmdParts[1] === "prefix") {
       spmgr.setServerPreferences({
         "server_id": sp.server_id,
