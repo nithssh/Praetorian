@@ -88,3 +88,4 @@ It will also create a verification channel, which is the only place the bot will
       }
     ])
    // .setFooter('Version 1.0.0', img);
+  }
